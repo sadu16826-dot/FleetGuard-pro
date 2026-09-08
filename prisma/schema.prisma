@@ -1,0 +1,549 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  FLEET_MANAGER
+  DRIVER
+  EMPLOYEE
+}
+
+enum VehicleStatus {
+  AVAILABLE
+  IN_USE
+  RESERVED
+  INSPECTION_REQUIRED
+  SERVICE_DUE
+  INACTIVE
+  IN_SERVICE
+  ACCIDENT_REPAIR
+  NOT_ROADWORTHY
+  SOLD
+  DISPOSED
+  TRANSFERRED
+}
+
+enum VehicleType {
+  CAR
+  SUV
+  VAN
+  BUS
+  TRUCK
+  PICKUP
+  OTHER
+}
+enum FuelType {
+  PETROL
+  DIESEL
+  ELECTRIC
+  HYBRID
+  CNG
+}
+enum OwnershipType {
+  COMPANY_OWNED
+  LEASED
+  RENTED
+  EMPLOYEE_OWNED
+  THIRD_PARTY
+}
+enum DocumentType {
+  RC
+  INSURANCE
+  POLLUTION_CERTIFICATE
+  FITNESS_CERTIFICATE
+  PERMIT
+  TAX_DOCUMENT
+  SERVICE_DOCUMENT
+  INSPECTION_DOCUMENT
+  OTHER
+}
+enum VehicleActivityAction {
+  VEHICLE_CREATED
+  VEHICLE_UPDATED
+  STATUS_CHANGED
+  TRIP_STARTED
+  TRIP_COMPLETED
+  SERVICE_ADDED
+  SERVICE_UPDATED
+  FUEL_ADDED
+  ISSUE_REPORTED
+  ISSUE_RESOLVED
+  DOCUMENT_UPLOADED
+  DOCUMENT_UPDATED
+  DOCUMENT_REPLACED
+  DOCUMENT_DELETED
+  TYRE_ADDED
+  VEHICLE_CHECKED_OUT
+  VEHICLE_RETURNED
+  INSPECTION_COMPLETED
+  SERVICE_COMPLETED
+  TYRE_UPDATED
+  TYRE_REPLACED
+  ACCIDENT_REPORTED
+}
+
+enum ServiceRecordStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum VehicleIssueType {
+  ENGINE
+  BRAKE
+  TYRE
+  BATTERY
+  ELECTRICAL
+  AC
+  SUSPENSION
+  STEERING
+  WHEEL_ALIGNMENT
+  BODY_DAMAGE
+  WARNING_LIGHT
+  OTHER
+}
+
+enum IssuePriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum IssueStatus {
+  OPEN
+  UNDER_REVIEW
+  IN_REPAIR
+  RESOLVED
+  CLOSED
+}
+
+enum TyreStatus {
+  GOOD
+  MONITOR
+  INSPECTION_REQUIRED
+  REPLACE_SOON
+  REPLACE_IMMEDIATELY
+  REPLACED
+}
+
+enum DriverStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum TripStatus {
+  PLANNED
+  ACTIVE
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  ABORTED
+}
+
+enum InspectionType {
+  PRE_TRIP
+  POST_TRIP
+  PERIODIC
+}
+
+enum TripPhotoType {
+  FRONT
+  REAR
+  LEFT
+  RIGHT
+}
+
+enum TripPhotoPhase {
+  PRE_TRIP
+  POST_TRIP
+}
+
+enum AccidentStatus {
+  REPORTED
+  INVESTIGATING
+  RESOLVED
+}
+
+enum NotificationType {
+  INFO
+  WARNING
+  CRITICAL
+  SUCCESS
+}
+
+model Company {
+  id        String   @id @default(cuid())
+  name      String
+  address   String?
+  phone     String?
+  createdAt DateTime @default(now()) @map("created_at")
+  users     User[]
+  vehicles  Vehicle[]
+  drivers   Driver[]
+  @@map("companies")
+}
+
+model User {
+  id           String         @id @default(cuid())
+  companyId    String?        @map("company_id")
+  name         String
+  email        String         @unique
+  passwordHash String         @map("password_hash")
+  role         UserRole
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
+  company      Company?       @relation(fields: [companyId], references: [id])
+  notifications Notification[]
+  vehicleActivities VehicleActivity[]
+  tripVehiclePhotos TripVehiclePhoto[]
+  @@index([companyId])
+  @@map("users")
+}
+
+model Vehicle {
+  id                 String         @id @default(cuid())
+  companyId          String         @map("company_id")
+  vehicleName        String         @map("vehicle_name")
+  vehicleCode        String         @unique @map("vehicle_code")
+  registrationNumber String         @unique @map("registration_number")
+  vehicleType        VehicleType    @map("vehicle_type")
+  brand              String
+  model              String
+  variant            String?
+  manufacturingYear  Int?           @map("manufacturing_year")
+  colour             String?
+  fuelType           FuelType       @map("fuel_type")
+  transmission       String?
+  seatingCapacity    Int?           @map("seating_capacity")
+  chassisNumber      String?         @unique @map("chassis_number")
+  engineNumber       String?         @unique @map("engine_number")
+  vin                String?         @unique
+  currentKm          Int            @default(0) @map("current_km")
+  engineCapacity     String?         @map("engine_capacity")
+  batteryType        String?         @map("battery_type")
+  batteryCapacity    String?         @map("battery_capacity")
+  vehicleWeight      String?         @map("vehicle_weight")
+  ownerName          String?         @map("owner_name")
+  ownershipType      OwnershipType?  @map("ownership_type")
+  purchaseDate       DateTime?       @map("purchase_date")
+  purchasePrice      Decimal?        @db.Decimal(14, 2) @map("purchase_price")
+  currentEstimatedValue Decimal?     @db.Decimal(14, 2) @map("current_estimated_value")
+  financeStatus      String?         @map("finance_status")
+  financeCompany     String?         @map("finance_company")
+  registrationDate  DateTime?       @map("registration_date")
+  registrationState String?         @map("registration_state")
+  registrationAuthority String?     @map("registration_authority")
+  rcNumber           String?         @map("rc_number")
+  vehicleClass       String?         @map("vehicle_class")
+  lastServiceDate    DateTime?       @map("last_service_date")
+  lastServiceKm      Int?            @map("last_service_km")
+  nextServiceDate    DateTime?       @map("next_service_date")
+  nextServiceKm      Int?            @map("next_service_km")
+  serviceInterval    Int?            @map("service_interval")
+  primaryPhotoUrl    String?         @map("primary_photo_url")
+  primaryDriverId    String?         @map("primary_driver_id")
+  currentDriverId    String?         @map("current_driver_id")
+  currentLocation    String?         @map("current_location")
+  status             VehicleStatus  @default(AVAILABLE)
+  createdAt          DateTime       @default(now()) @map("created_at")
+  updatedAt          DateTime       @updatedAt @map("updated_at")
+  company            Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  documents          VehicleDocument[]
+  trips              Trip[]
+  services           Service[]
+  tyres              Tyre[]
+  fuelRecords        FuelRecord[]
+  expenses           Expense[]
+  accidents          Accident[]
+  activities         VehicleActivity[]
+  issues             VehicleIssue[]
+  tripVehiclePhotos  TripVehiclePhoto[]
+  primaryDriver      Driver?         @relation("PrimaryVehicleDriver", fields: [primaryDriverId], references: [id])
+  currentDriver      Driver?         @relation("CurrentVehicleDriver", fields: [currentDriverId], references: [id])
+  @@index([companyId, status])
+  @@map("vehicles")
+}
+
+model VehicleDocument {
+  id             String   @id @default(cuid())
+  vehicleId      String   @map("vehicle_id")
+  documentType   DocumentType @map("document_type")
+  documentName   String?  @map("document_name")
+  documentNumber String?  @map("document_number")
+  issueDate      DateTime? @map("issue_date")
+  expiryDate     DateTime? @map("expiry_date")
+  fileUrl        String   @map("file_url")
+  fileName       String   @map("file_name")
+  uploadedBy     String   @map("uploaded_by")
+  notes          String?
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  vehicle        Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  @@index([vehicleId, expiryDate])
+  @@map("vehicle_documents")
+}
+
+model VehicleActivity {
+  id          String                @id @default(cuid())
+  vehicleId   String                @map("vehicle_id")
+  userId      String?               @map("user_id")
+  action      VehicleActivityAction
+  description String
+  metadata    Json?
+  createdAt   DateTime              @default(now()) @map("created_at")
+  vehicle     Vehicle               @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  user        User?                 @relation(fields: [userId], references: [id])
+  @@index([vehicleId, createdAt])
+  @@map("vehicle_activities")
+}
+
+model Driver {
+  id            String       @id @default(cuid())
+  companyId     String       @map("company_id")
+  name          String
+  phone         String
+  email         String?
+  licenseNumber String       @unique @map("license_number")
+  licenseExpiry DateTime     @map("license_expiry")
+  status        DriverStatus @default(ACTIVE)
+  company       Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  trips         Trip[]
+  fuelRecords   FuelRecord[]
+  accidents     Accident[]
+  primaryVehicles Vehicle[] @relation("PrimaryVehicleDriver")
+  currentVehicles Vehicle[] @relation("CurrentVehicleDriver")
+  tripVehiclePhotos TripVehiclePhoto[]
+  @@index([companyId, status])
+  @@map("drivers")
+}
+
+model Trip {
+  id          String     @id @default(cuid())
+  vehicleId   String     @map("vehicle_id")
+  driverId    String     @map("driver_id")
+  purpose     String
+  startLocation String?    @map("start_location")
+  destination String
+  tripDate    DateTime?    @map("trip_date")
+  expectedReturnTime DateTime? @map("expected_return_time")
+  startKm     Int?       @map("start_km")
+  endKm       Int?       @map("end_km")
+  startTime   DateTime?  @map("start_time")
+  endTime     DateTime?  @map("end_time")
+  status      TripStatus @default(PLANNED)
+  fuelLevel   Int?       @map("fuel_level")
+  batteryPercentage Int? @map("battery_percentage")
+  remarks     String?
+  preTripPhotos String[] @default([]) @map("pre_trip_photos")
+  postTripPhotos String[] @default([]) @map("post_trip_photos")
+  returnFuelLevel Int? @map("return_fuel_level")
+  returnBatteryPercentage Int? @map("return_battery_percentage")
+  newDamage   Boolean @default(false) @map("new_damage")
+  accidentReported Boolean @default(false) @map("accident_reported")
+  tyreProblem Boolean @default(false) @map("tyre_problem")
+  warningLight Boolean @default(false) @map("warning_light")
+  mechanicalProblem Boolean @default(false) @map("mechanical_problem")
+  returnRemarks String? @map("return_remarks")
+  vehicle     Vehicle    @relation(fields: [vehicleId], references: [id])
+  driver      Driver     @relation(fields: [driverId], references: [id])
+  inspections Inspection[]
+  vehiclePhotos TripVehiclePhoto[]
+  @@index([vehicleId, status])
+  @@index([driverId, status])
+  @@map("trips")
+}
+
+model TripVehiclePhoto {
+  id           String         @id @default(cuid())
+  tripId       String         @map("trip_id")
+  vehicleId    String         @map("vehicle_id")
+  driverId     String         @map("driver_id")
+  uploadedById String         @map("uploaded_by_id")
+  photoType    TripPhotoType  @map("photo_type")
+  phase        TripPhotoPhase @default(PRE_TRIP)
+  data         Bytes
+  mimeType     String         @map("mime_type")
+  fileName     String         @map("file_name")
+  size         Int
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
+  trip         Trip           @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle        @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  driver       Driver         @relation(fields: [driverId], references: [id])
+  uploadedBy   User           @relation(fields: [uploadedById], references: [id])
+  @@unique([tripId, phase, photoType])
+  @@index([vehicleId, createdAt])
+  @@index([driverId])
+  @@index([uploadedById])
+  @@map("trip_vehicle_photos")
+}
+
+model Inspection {
+  id             String         @id @default(cuid())
+  tripId         String         @map("trip_id")
+  inspectionType InspectionType @map("inspection_type")
+  tyreStatus     String         @map("tyre_status")
+  damageStatus   String         @map("damage_status")
+  fuelLevel      Int            @map("fuel_level")
+  notes          String?
+  photos         String[]
+  tyresOk        Boolean? @map("tyres_ok")
+  tyrePressureOk Boolean? @map("tyre_pressure_ok")
+  lightsOk       Boolean? @map("lights_ok")
+  indicatorsOk   Boolean? @map("indicators_ok")
+  brakeLightsOk  Boolean? @map("brake_lights_ok")
+  mirrorsOk      Boolean? @map("mirrors_ok")
+  warningLights  Boolean? @map("warning_lights")
+  mechanicalProblem Boolean? @map("mechanical_problem")
+  trip           Trip           @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  @@map("inspections")
+}
+
+model Service {
+  id          String   @id @default(cuid())
+  vehicleId   String   @map("vehicle_id")
+  serviceType String   @map("service_type")
+  serviceDate DateTime @map("service_date")
+  serviceKm   Int      @map("service_km")
+  cost        Decimal  @db.Decimal(12, 2)
+  notes       String?
+  provider    String?
+  serviceCentre String? @map("service_centre")
+  partsCost   Decimal? @db.Decimal(12, 2) @map("parts_cost")
+  labourCost  Decimal? @db.Decimal(12, 2) @map("labour_cost")
+  nextServiceDate DateTime? @map("next_service_date")
+  nextServiceKm Int? @map("next_service_km")
+  status      ServiceRecordStatus @default(COMPLETED)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  vehicle     Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  @@index([vehicleId, serviceDate])
+  @@map("services")
+}
+
+model Tyre {
+  id               String   @id @default(cuid())
+  vehicleId        String   @map("vehicle_id")
+  position         String
+  brand            String
+  installationDate DateTime @map("installation_date")
+  condition        String
+  model            String?
+  size             String?
+  serialNumber     String? @map("serial_number")
+  installationKm   Int? @map("installation_km")
+  currentKm        Int? @map("current_km")
+  pressure         Decimal? @db.Decimal(6, 2)
+  status           TyreStatus @default(GOOD)
+  replacementDate  DateTime? @map("replacement_date")
+  replacementKm    Int? @map("replacement_km")
+  cost              Decimal? @db.Decimal(12, 2)
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  vehicle          Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  history           TyreHistory[]
+  @@map("tyres")
+}
+
+model FuelRecord {
+  id        String   @id @default(cuid())
+  vehicleId String   @map("vehicle_id")
+  driverId  String?  @map("driver_id")
+  litres    Decimal  @db.Decimal(10, 2)
+  amount    Decimal  @db.Decimal(12, 2)
+  currentKm Int      @map("current_km")
+  date      DateTime
+  fuelType  String? @map("fuel_type")
+  pricePerUnit Decimal? @db.Decimal(12, 3) @map("price_per_unit")
+  station    String?
+  paymentMethod String? @map("payment_method")
+  receiptUrl String? @map("receipt_url")
+  notes      String?
+  createdAt  DateTime @default(now()) @map("created_at")
+  vehicle   Vehicle  @relation(fields: [vehicleId], references: [id])
+  driver    Driver?  @relation(fields: [driverId], references: [id])
+  @@index([vehicleId, date])
+  @@map("fuel_records")
+}
+
+model VehicleIssue {
+  id              String           @id @default(cuid())
+  vehicleId       String           @map("vehicle_id")
+  issueType       VehicleIssueType @map("issue_type")
+  description     String
+  priority        IssuePriority
+  status          IssueStatus      @default(OPEN)
+  reportedDate    DateTime         @map("reported_date")
+  reportedBy      String           @map("reported_by")
+  currentKm       Int              @map("current_km")
+  photos          String[]         @default([])
+  safetyCritical  Boolean          @default(false) @map("safety_critical")
+  resolvedDate    DateTime?        @map("resolved_date")
+  resolvedBy      String?          @map("resolved_by")
+  resolutionNotes String?          @map("resolution_notes")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+  vehicle         Vehicle          @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  @@index([vehicleId, status])
+  @@map("vehicle_issues")
+}
+
+model TyreHistory {
+  id          String   @id @default(cuid())
+  tyreId      String   @map("tyre_id")
+  action      String
+  description String
+  metadata    Json?
+  createdAt   DateTime @default(now()) @map("created_at")
+  tyre        Tyre     @relation(fields: [tyreId], references: [id], onDelete: Cascade)
+  @@index([tyreId, createdAt])
+  @@map("tyre_history")
+}
+
+model Expense {
+  id         String   @id @default(cuid())
+  vehicleId  String   @map("vehicle_id")
+  category   String
+  amount     Decimal  @db.Decimal(12, 2)
+  date       DateTime
+  invoiceUrl String?  @map("invoice_url")
+  vehicle    Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  @@index([vehicleId, date])
+  @@map("expenses")
+}
+
+model Accident {
+  id          String         @id @default(cuid())
+  vehicleId   String         @map("vehicle_id")
+  driverId    String         @map("driver_id")
+  description String
+  location    String
+  date        DateTime
+  status      AccidentStatus @default(REPORTED)
+  vehicle     Vehicle        @relation(fields: [vehicleId], references: [id])
+  driver      Driver         @relation(fields: [driverId], references: [id])
+  @@index([vehicleId, date])
+  @@map("accidents")
+}
+
+model Notification {
+  id         String           @id @default(cuid())
+  userId     String           @map("user_id")
+  title      String
+  message    String
+  type       NotificationType @default(INFO)
+  readStatus Boolean          @default(false) @map("read_status")
+  createdAt  DateTime         @default(now()) @map("created_at")
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, readStatus])
+  @@map("notifications")
+}
