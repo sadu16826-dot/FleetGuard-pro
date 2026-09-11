@@ -17,7 +17,16 @@ export function LoginForm() {
     const data = new FormData(event.currentTarget);
     try {
       const response = await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username: data.get("username"), password: data.get("password"), remember: data.get("remember") === "on" }) });
-      if (!response.ok) { const result = await response.json() as { message: string }; setError(result.message); return; }
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({})) as { message?: string; code?: string };
+        console.error("FleetGuard login request failed", {
+          status: response.status,
+          statusText: response.statusText,
+          code: result.code ?? "AUTH_REQUEST_FAILED",
+        });
+        setError(result.message ?? "Unable to sign in. Please try again.");
+        return;
+      }
       router.replace("/dashboard");
     } catch { setError("Unable to sign in. Please try again."); }
     finally { setLoading(false); }

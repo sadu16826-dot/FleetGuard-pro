@@ -26,19 +26,28 @@ export async function POST(request: Request) {
   try {
     body = await request.json() as LoginBody;
   } catch {
-    return NextResponse.json({ message: "Enter a valid username and password." }, { status: 400 });
+    return NextResponse.json(
+      { message: "Enter a valid username and password.", code: "AUTH_INVALID_REQUEST" },
+      { status: 400 },
+    );
   }
 
   const login = typeof body.username === "string" ? body.username.trim() : "";
   const password = typeof body.password === "string" ? body.password : "";
   if (!login || !password)
-    return NextResponse.json({ message: "Username and password are required." }, { status: 400 });
+    return NextResponse.json(
+      { message: "Username and password are required.", code: "AUTH_VALIDATION_ERROR" },
+      { status: 400 },
+    );
 
   const missingVariable = missingAuthenticationEnvironmentVariable();
   if (missingVariable) {
     logAuthenticationFailure("AUTH_ENVIRONMENT_ERROR", { missingVariable });
     return NextResponse.json(
-      { message: "Unable to sign in right now. Please contact an administrator." },
+      {
+        message: "Unable to sign in right now. Please contact an administrator.",
+        code: "AUTH_CONFIGURATION_ERROR",
+      },
       { status: 503 },
     );
   }
@@ -64,10 +73,16 @@ export async function POST(request: Request) {
         event: "AUTH_INVALID_CREDENTIALS",
         timestamp: new Date().toISOString(),
       });
-      return NextResponse.json({ message: "Invalid username or password." }, { status: 401 });
+      return NextResponse.json(
+        { message: "Invalid username or password.", code: "AUTH_INVALID_CREDENTIALS" },
+        { status: 401 },
+      );
     }
     if (!user.active)
-      return NextResponse.json({ message: "Your account is inactive. Please contact an administrator." }, { status: 403 });
+      return NextResponse.json(
+        { message: "Your account is inactive. Please contact an administrator.", code: "AUTH_ACCOUNT_INACTIVE" },
+        { status: 403 },
+      );
 
     await db.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
   } catch (error) {
@@ -78,10 +93,19 @@ export async function POST(request: Request) {
     });
     logServerError("POST /api/auth/login", error);
     if (category === "unavailable")
-      return NextResponse.json({ message: "Unable to sign in right now. Please try again." }, { status: 503 });
+      return NextResponse.json(
+        { message: "Unable to sign in right now. Please try again.", code: "AUTH_DATABASE_UNAVAILABLE" },
+        { status: 503 },
+      );
     if (category === "schema")
-      return NextResponse.json({ message: "Unable to sign in right now. Please contact an administrator." }, { status: 503 });
-    return NextResponse.json({ message: "Unable to sign in. Please try again." }, { status: 500 });
+      return NextResponse.json(
+        { message: "Unable to sign in right now. Please contact an administrator.", code: "AUTH_DATABASE_SCHEMA_ERROR" },
+        { status: 503 },
+      );
+    return NextResponse.json(
+      { message: "Unable to sign in. Please try again.", code: "AUTH_LOGIN_ERROR" },
+      { status: 500 },
+    );
   }
 
   try {
@@ -98,6 +122,9 @@ export async function POST(request: Request) {
     logAuthenticationFailure("AUTH_SESSION_ERROR", {
       errorName: error instanceof Error ? error.name : "UnknownError",
     });
-    return NextResponse.json({ message: "Unable to sign in. Please try again." }, { status: 500 });
+    return NextResponse.json(
+      { message: "Unable to sign in. Please try again.", code: "AUTH_SESSION_ERROR" },
+      { status: 500 },
+    );
   }
 }
