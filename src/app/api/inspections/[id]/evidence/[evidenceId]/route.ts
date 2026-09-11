@@ -1,0 +1,3 @@
+import { db } from "@/lib/db";
+import { authenticatedUser } from "@/lib/access-control";
+export async function GET(_: Request, { params }: { params: Promise<{ id: string; evidenceId: string }> }) { try { const user = await authenticatedUser(); const { id, evidenceId } = await params; const evidence = await db.inspectionEvidence.findFirst({ where: { id: evidenceId, inspectionId: id, inspection: { companyId: user.companyId! } } }); if (!evidence) return new Response("Not found", { status: 404 }); return new Response(evidence.fileData, { headers: { "Content-Type": evidence.mimeType, "Content-Disposition": `inline; filename="${evidence.fileName.replaceAll('"', '')}"` } }); } catch { return new Response("Unable to load evidence", { status: 500 }); } }

@@ -1,46 +1,222 @@
+import { accessibleVehicle, accessFailure } from "@/lib/access-control";
+import { documentSelect } from "@/lib/document-server";
 import { NextResponse } from "next/server";
 import { Prisma } from "@/generated/prisma";
 import { db } from "@/lib/db";
 import { validateVehicle } from "@/lib/vehicle-utils";
 import type { VehicleFormValues, VehicleStatus } from "@/types/vehicle";
 
-const statuses = new Set<VehicleStatus>(["AVAILABLE","IN_USE","RESERVED","INSPECTION_REQUIRED","SERVICE_DUE","IN_SERVICE","ACCIDENT_REPAIR","NOT_ROADWORTHY","INACTIVE","SOLD","DISPOSED","TRANSFERRED"]);
-const date = (value?: string) => value ? new Date(value) : null;
+const statuses = new Set<VehicleStatus>([
+  "AVAILABLE",
+  "IN_USE",
+  "RESERVED",
+  "INSPECTION_REQUIRED",
+  "SERVICE_DUE",
+  "IN_SERVICE",
+  "ACCIDENT_REPAIR",
+  "NOT_ROADWORTHY",
+  "INACTIVE",
+  "SOLD",
+  "DISPOSED",
+  "TRANSFERRED",
+]);
+const date = (value?: string) => (value ? new Date(value) : null);
 const optional = (value?: string) => value?.trim() || null;
 
-export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
-  try { const { id } = await params; const vehicle = await db.vehicle.findUnique({ where: { id }, include: { documents: true, activities: { orderBy: { createdAt: "desc" } } } }); return vehicle ? NextResponse.json(vehicle) : NextResponse.json({ message: "Vehicle could not be found." }, { status: 404 }); }
-  catch (error) { if (process.env.NODE_ENV !== "production") console.error("Vehicle read failed", error); return NextResponse.json({ message: "Unable to load vehicle." }, { status: 500 }); }
-}
-
-export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(
+  _: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
   try {
     const { id } = await params;
-    const input = await request.json() as Partial<VehicleFormValues>;
-    const current = await db.vehicle.findUnique({ where: { id } });
-    if (!current) return NextResponse.json({ message: "Vehicle could not be found." }, { status: 404 });
+    const { user } = await accessibleVehicle(id);
+    const vehicle = await db.vehicle.findFirst({
+      where: { id, companyId: user.companyId! },
+      include: {
+        documents: {
+          where: { serviceId: null, fuelRecordId: null },
+          select: documentSelect,
+        },
+        activities: { orderBy: { createdAt: "desc" } },
+      },
+    });
+    return NextResponse.json(vehicle);
+  } catch (error) {
+    if (process.env.NODE_ENV !== "production")
+      console.error("Vehicle read failed", error);
+    return accessFailure(error, "Unable to load vehicle.");
+  }
+}
 
-    if (input.status && !statuses.has(input.status)) return NextResponse.json({ message: "Select a valid vehicle status.", errors: { status: "Select a valid vehicle status." } }, { status: 400 });
-    if (input.currentKm != null && (!Number.isFinite(input.currentKm) || input.currentKm < current.currentKm)) return NextResponse.json({ message: "Current kilometre reading cannot be lower than the previous recorded reading.", errors: { currentKm: "Current kilometre reading cannot be lower than the previous recorded reading." } }, { status: 400 });
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  try {
+    const { id } = await params;
+    const { user, vehicle: current } = await accessibleVehicle(id, true);
+    const input = (await request.json()) as Partial<VehicleFormValues>;
+
+    if (input.status && !statuses.has(input.status))
+      return NextResponse.json(
+        {
+          message: "Select a valid vehicle status.",
+          errors: { status: "Select a valid vehicle status." },
+        },
+        { status: 400 },
+      );
+    if (
+      input.currentKm != null &&
+      (!Number.isFinite(input.currentKm) || input.currentKm < current.currentKm)
+    )
+      return NextResponse.json(
+        {
+          message:
+            "Current kilometre reading cannot be lower than the previous recorded reading.",
+          errors: {
+            currentKm:
+              "Current kilometre reading cannot be lower than the previous recorded reading.",
+          },
+        },
+        { status: 400 },
+      );
 
     if (Object.keys(input).length === 1 && input.status) {
-      const vehicle = await db.vehicle.update({ where: { id }, data: { status: input.status as never, activities: { create: { userId: "dev-admin", action: "STATUS_CHANGED", description: `Status changed from ${current.status} to ${input.status}` } } } });
+      const vehicle = await db.vehicle.update({
+        where: { id },
+        data: {
+          status: input.status as never,
+          activities: {
+            create: {
+              userId: user.id,
+              action: "STATUS_CHANGED",
+              description: `Status changed from ${current.status} to ${input.status}`,
+            },
+          },
+        },
+      });
       return NextResponse.json(vehicle);
     }
 
-    const complete = { ...current, ...input, purchasePrice: input.purchasePrice == null ? undefined : Number(input.purchasePrice), currentEstimatedValue: input.currentEstimatedValue == null ? undefined : Number(input.currentEstimatedValue) } as unknown as VehicleFormValues;
+    const complete = {
+      ...current,
+      ...input,
+      purchasePrice:
+        input.purchasePrice == null ? undefined : Number(input.purchasePrice),
+      currentEstimatedValue:
+        input.currentEstimatedValue == null
+          ? undefined
+          : Number(input.currentEstimatedValue),
+    } as unknown as VehicleFormValues;
     const errors = validateVehicle(complete, current.currentKm);
-    if (Object.keys(errors).length) return NextResponse.json({ message: "Please correct the highlighted fields.", errors }, { status: 400 });
+    if (Object.keys(errors).length)
+      return NextResponse.json(
+        { message: "Please correct the highlighted fields.", errors },
+        { status: 400 },
+      );
 
     const statusChanged = input.status && input.status !== current.status;
-    const vehicle = await db.vehicle.update({ where: { id }, data: {
-      vehicleCode: input.vehicleCode?.trim().toUpperCase(), vehicleName: input.vehicleName?.trim(), registrationNumber: input.registrationNumber?.replace(/\s/g, "").toUpperCase(), vehicleType: input.vehicleType as never, brand: input.brand?.trim(), model: input.model?.trim(), variant: optional(input.variant), manufacturingYear: input.manufacturingYear ?? null, colour: optional(input.colour), fuelType: input.fuelType as never, transmission: optional(input.transmission), seatingCapacity: input.seatingCapacity ?? null, chassisNumber: optional(input.chassisNumber), engineNumber: optional(input.engineNumber), vin: optional(input.vin), currentKm: input.currentKm, engineCapacity: optional(input.engineCapacity), batteryType: optional(input.batteryType), batteryCapacity: optional(input.batteryCapacity), vehicleWeight: optional(input.vehicleWeight), ownerName: optional(input.ownerName), ownershipType: (input.ownershipType || null) as never, purchaseDate: date(input.purchaseDate), purchasePrice: input.purchasePrice ?? null, currentEstimatedValue: input.currentEstimatedValue ?? null, financeStatus: optional(input.financeStatus), financeCompany: optional(input.financeCompany), registrationDate: date(input.registrationDate), registrationState: optional(input.registrationState), registrationAuthority: optional(input.registrationAuthority), rcNumber: optional(input.rcNumber), vehicleClass: optional(input.vehicleClass), lastServiceDate: date(input.lastServiceDate), lastServiceKm: input.lastServiceKm ?? null, nextServiceDate: date(input.nextServiceDate), nextServiceKm: input.nextServiceKm ?? null, serviceInterval: input.serviceInterval ?? null, status: input.status as never,
-      activities: { create: { userId: "dev-admin", action: statusChanged ? "STATUS_CHANGED" : "VEHICLE_UPDATED", description: statusChanged ? `Status changed from ${current.status} to ${input.status}` : "Vehicle details updated" } }
-    }});
+    const vehicle = await db.vehicle.update({
+      where: { id },
+      data: {
+        vehicleCode: input.vehicleCode?.trim().toUpperCase(),
+        vehicleName: input.vehicleName?.trim(),
+        registrationNumber: input.registrationNumber
+          ?.replace(/\s/g, "")
+          .toUpperCase(),
+        vehicleType: input.vehicleType as never,
+        brand: input.brand?.trim(),
+        model: input.model?.trim(),
+        variant: "variant" in input ? optional(input.variant) : undefined,
+        manufacturingYear: input.manufacturingYear,
+        colour: "colour" in input ? optional(input.colour) : undefined,
+        fuelType: input.fuelType as never,
+        transmission:
+          "transmission" in input ? optional(input.transmission) : undefined,
+        seatingCapacity: input.seatingCapacity,
+        chassisNumber:
+          "chassisNumber" in input ? optional(input.chassisNumber) : undefined,
+        engineNumber:
+          "engineNumber" in input ? optional(input.engineNumber) : undefined,
+        vin: "vin" in input ? optional(input.vin) : undefined,
+        currentKm: input.currentKm,
+        engineCapacity:
+          "engineCapacity" in input
+            ? optional(input.engineCapacity)
+            : undefined,
+        batteryType:
+          "batteryType" in input ? optional(input.batteryType) : undefined,
+        batteryCapacity:
+          "batteryCapacity" in input
+            ? optional(input.batteryCapacity)
+            : undefined,
+        vehicleWeight:
+          "vehicleWeight" in input ? optional(input.vehicleWeight) : undefined,
+        ownerName: "ownerName" in input ? optional(input.ownerName) : undefined,
+        ownershipType:
+          "ownershipType" in input
+            ? ((input.ownershipType || null) as never)
+            : undefined,
+        purchaseDate:
+          "purchaseDate" in input ? date(input.purchaseDate) : undefined,
+        purchasePrice: input.purchasePrice,
+        currentEstimatedValue: input.currentEstimatedValue,
+        financeStatus:
+          "financeStatus" in input ? optional(input.financeStatus) : undefined,
+        financeCompany:
+          "financeCompany" in input
+            ? optional(input.financeCompany)
+            : undefined,
+        registrationDate:
+          "registrationDate" in input
+            ? date(input.registrationDate)
+            : undefined,
+        registrationState:
+          "registrationState" in input
+            ? optional(input.registrationState)
+            : undefined,
+        registrationAuthority:
+          "registrationAuthority" in input
+            ? optional(input.registrationAuthority)
+            : undefined,
+        rcNumber: "rcNumber" in input ? optional(input.rcNumber) : undefined,
+        vehicleClass:
+          "vehicleClass" in input ? optional(input.vehicleClass) : undefined,
+        lastServiceDate:
+          "lastServiceDate" in input ? date(input.lastServiceDate) : undefined,
+        lastServiceKm: input.lastServiceKm,
+        nextServiceDate:
+          "nextServiceDate" in input ? date(input.nextServiceDate) : undefined,
+        nextServiceKm: input.nextServiceKm,
+        serviceInterval: input.serviceInterval,
+        status: input.status as never,
+        activities: {
+          create: {
+            userId: user.id,
+            action: statusChanged ? "STATUS_CHANGED" : "VEHICLE_UPDATED",
+            description: statusChanged
+              ? `Status changed from ${current.status} to ${input.status}`
+              : "Vehicle details updated",
+          },
+        },
+      },
+    });
     return NextResponse.json(vehicle);
   } catch (error) {
-    if (process.env.NODE_ENV !== "production") console.error("Vehicle update failed", error);
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") { const target = String(error.meta?.target ?? ""); const message = target.includes("vehicle_code") ? "A vehicle with this vehicle ID already exists." : target.includes("registration_number") ? "A vehicle with this registration number already exists." : "Another vehicle already uses one of these unique identifiers."; return NextResponse.json({ message }, { status: 409 }); }
-    return NextResponse.json({ message: "Vehicle could not be updated." }, { status: 500 });
+    if (process.env.NODE_ENV !== "production")
+      console.error("Vehicle update failed", error);
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      const target = String(error.meta?.target ?? "");
+      const message = target.includes("vehicle_code")
+        ? "A vehicle with this vehicle ID already exists."
+        : target.includes("registration_number")
+          ? "A vehicle with this registration number already exists."
+          : "Another vehicle already uses one of these unique identifiers.";
+      return NextResponse.json({ message }, { status: 409 });
+    }
+    return accessFailure(error, "Vehicle could not be updated.");
   }
 }

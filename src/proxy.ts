@@ -8,4 +8,16 @@ export function proxy(request: NextRequest) {
   return NextResponse.next();
 }
 
-export const config = { matcher: ["/dashboard/:path*", "/vehicles/:path*", "/api/vehicles/:path*"] };
+export const config = { matcher: [
+  "/dashboard/:path*",
+  "/vehicles/:path*",
+  "/api/vehicles/:path*",
+  "/api/drivers/:path*",
+  "/api/licences/:path*",
+  "/api/passports/:path*",
+  "/api/inspections/:path*",
+  "/api/expenses/:path*",
+  "/api/accidents/:path*",
+  "/api/settings/:path*",
+  "/api/users/:path*",
+] };

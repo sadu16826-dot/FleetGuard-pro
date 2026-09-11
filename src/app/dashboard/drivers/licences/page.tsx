@@ -1,0 +1,5 @@
+import { authenticatedUser } from "@/lib/access-control";
+import { db } from "@/lib/db";
+import { LicenceManager } from "@/components/drivers/licence-manager";
+export const dynamic="force-dynamic";
+export default async function LicencesPage(){const user=await authenticatedUser();const [licences,drivers]=await Promise.all([db.driverLicence.findMany({where:{driver:{companyId:user.companyId!}},select:{id:true,driverId:true,licenceNumber:true,licenceType:true,vehicleClass:true,issueDate:true,expiryDate:true,renewalStatus:true,operationalStatus:true,isCurrent:true,driver:{select:{name:true,employeeId:true}},documents:{where:{isCurrent:true},select:{id:true,fileName:true,fileSize:true},take:1}},orderBy:[{isCurrent:"desc"},{expiryDate:"asc"}]}),db.driver.findMany({where:{companyId:user.companyId!},select:{id:true,name:true,employeeId:true,phone:true,status:true},orderBy:{name:"asc"}})]);return <LicenceManager initialLicences={licences.map(l=>({...l,issueDate:l.issueDate.toISOString(),expiryDate:l.expiryDate.toISOString()}))} drivers={drivers}/>}

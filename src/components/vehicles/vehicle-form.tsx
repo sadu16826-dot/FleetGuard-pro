@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { validateVehicle } from "@/lib/vehicle-utils";
 import type { VehicleFormValues } from "@/types/vehicle";
 
-const initial: VehicleFormValues = { vehicleCode: "", vehicleName: "", registrationNumber: "", vehicleType: "", brand: "", model: "", fuelType: "", currentKm: 0, status: "AVAILABLE" };
+const initial: Partial<VehicleFormValues> = { vehicleCode: "", vehicleName: "", registrationNumber: "", vehicleType: "", brand: "", model: "", fuelType: "", currentKm: undefined, status: "AVAILABLE" };
 const numberFields = ["currentKm", "manufacturingYear", "lastServiceKm", "nextServiceKm", "seatingCapacity", "serviceInterval", "purchasePrice", "currentEstimatedValue"] as const;
 
 function Field({ label, name, type = "text", required, error, defaultValue }: { label: string; name: string; type?: string; required?: boolean; error?: string; defaultValue?: string | number }) {

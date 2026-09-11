@@ -1,2 +1,7 @@
 import { DashboardShell } from "@/components/dashboard/shell";
-export default function VehicleLayout({ children }: { children: React.ReactNode }) { return <DashboardShell>{children}</DashboardShell>; }
+import { requirePermission } from "@/lib/access-control";
+
+export default async function VehicleLayout({ children }: { children: React.ReactNode }) {
+  const user = await requirePermission("VEHICLES");
+  return <DashboardShell user={{ name: user.name, role: user.role }}>{children}</DashboardShell>;
+}
