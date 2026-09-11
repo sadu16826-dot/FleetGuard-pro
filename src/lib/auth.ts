@@ -10,7 +10,15 @@ const developmentUser = {
 };
 
 export function validateDevelopmentCredentials(username: string, password: string) {
+  if (process.env.NODE_ENV === "production") return null;
   if (username === "sadu" && password === "sadu1234") return developmentUser;
+  return null;
+}
+
+export function missingAuthenticationEnvironmentVariable() {
+  if (process.env.NODE_ENV !== "production") return null;
+  if (!process.env.DATABASE_URL) return "DATABASE_URL";
+  if (!process.env.SESSION_SECRET) return "SESSION_SECRET";
   return null;
 }
 

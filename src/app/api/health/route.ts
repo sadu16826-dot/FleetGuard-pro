@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { logServerError } from "@/lib/database-errors";
 
+export const runtime = "nodejs";
+
 export async function GET() {
   try {
     await db.$queryRaw`SELECT 1`;

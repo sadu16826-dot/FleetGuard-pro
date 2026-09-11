@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   createDevelopmentSession,
+  missingAuthenticationEnvironmentVariable,
   SESSION_COOKIE,
   validateDevelopmentCredentials,
   verifyPassword,
@@ -9,6 +10,16 @@ import { db } from "@/lib/db";
 import { databaseErrorCategory, logServerError } from "@/lib/database-errors";
 
 type LoginBody = { username?: unknown; password?: unknown; remember?: unknown };
+
+export const runtime = "nodejs";
+
+function logAuthenticationFailure(event: string, details: Record<string, unknown> = {}) {
+  console.error("Authentication failure", {
+    event,
+    timestamp: new Date().toISOString(),
+    ...details,
+  });
+}
 
 export async function POST(request: Request) {
   let body: LoginBody;
@@ -23,6 +34,16 @@ export async function POST(request: Request) {
   if (!login || !password)
     return NextResponse.json({ message: "Username and password are required." }, { status: 400 });
 
+  const missingVariable = missingAuthenticationEnvironmentVariable();
+  if (missingVariable) {
+    logAuthenticationFailure("AUTH_ENVIRONMENT_ERROR", { missingVariable });
+    return NextResponse.json(
+      { message: "Unable to sign in right now. Please contact an administrator." },
+      { status: 503 },
+    );
+  }
+
+  let user;
   try {
     const legacyUser = validateDevelopmentCredentials(login, password);
     if (legacyUser) {
@@ -34,16 +55,36 @@ export async function POST(request: Request) {
       });
     }
 
-    const user = legacyUser
+    user = legacyUser
       ? await db.user.findUnique({ where: { id: legacyUser.id } })
       : await db.user.findUnique({ where: { email: login.toLowerCase() } });
 
-    if (!user || (!legacyUser && !verifyPassword(password, user.passwordHash)))
+    if (!user || (!legacyUser && !verifyPassword(password, user.passwordHash))) {
+      console.warn("Authentication rejected", {
+        event: "AUTH_INVALID_CREDENTIALS",
+        timestamp: new Date().toISOString(),
+      });
       return NextResponse.json({ message: "Invalid username or password." }, { status: 401 });
+    }
     if (!user.active)
       return NextResponse.json({ message: "Your account is inactive. Please contact an administrator." }, { status: 403 });
 
     await db.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
+  } catch (error) {
+    const category = databaseErrorCategory(error);
+    logAuthenticationFailure("AUTH_LOGIN_DATABASE_ERROR", {
+      category,
+      errorName: error instanceof Error ? error.name : "UnknownError",
+    });
+    logServerError("POST /api/auth/login", error);
+    if (category === "unavailable")
+      return NextResponse.json({ message: "Unable to sign in right now. Please try again." }, { status: 503 });
+    if (category === "schema")
+      return NextResponse.json({ message: "Unable to sign in right now. Please contact an administrator." }, { status: 503 });
+    return NextResponse.json({ message: "Unable to sign in. Please try again." }, { status: 500 });
+  }
+
+  try {
     const response = NextResponse.json({ user: { id: user.id, name: user.name, role: user.role } });
     response.cookies.set(SESSION_COOKIE, createDevelopmentSession(user.id), {
       httpOnly: true,
@@ -54,12 +95,9 @@ export async function POST(request: Request) {
     });
     return response;
   } catch (error) {
-    logServerError("POST /api/auth/login", error);
-    const category = databaseErrorCategory(error);
-    if (category === "unavailable")
-      return NextResponse.json({ message: "Unable to sign in right now. Please try again." }, { status: 503 });
-    if (category === "schema")
-      return NextResponse.json({ message: "Unable to sign in right now. Please contact an administrator." }, { status: 503 });
+    logAuthenticationFailure("AUTH_SESSION_ERROR", {
+      errorName: error instanceof Error ? error.name : "UnknownError",
+    });
     return NextResponse.json({ message: "Unable to sign in. Please try again." }, { status: 500 });
   }
 }
