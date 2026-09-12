@@ -33,6 +33,8 @@ test("production authentication reports only required missing variable names", (
 test("login keeps secure cookie policy and safe diagnostic event codes", () => {
   const route = fs.readFileSync("src/app/api/auth/login/route.ts", "utf8");
   assert.match(route, /AUTH_ENVIRONMENT_ERROR/);
+  assert.match(route, /AUTH_DATABASE_URL_MISSING/);
+  assert.match(route, /AUTH_SESSION_SECRET_MISSING/);
   assert.match(route, /AUTH_LOGIN_DATABASE_ERROR/);
   assert.match(route, /AUTH_SESSION_ERROR/);
   assert.match(route, /httpOnly: true/);

@@ -46,7 +46,9 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         message: "Unable to sign in right now. Please contact an administrator.",
-        code: "AUTH_CONFIGURATION_ERROR",
+        code: missingVariable === "DATABASE_URL"
+          ? "AUTH_DATABASE_URL_MISSING"
+          : "AUTH_SESSION_SECRET_MISSING",
       },
       { status: 503 },
     );
