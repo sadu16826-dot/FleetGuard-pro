@@ -43,10 +43,9 @@ test("login keeps secure cookie policy and safe diagnostic event codes", () => {
   assert.doesNotMatch(route, /console\.(?:log|warn|error)\([^\n]*(?:password|passwordHash|SESSION_SECRET|DATABASE_URL)/);
 });
 
-test("client diagnostics report only status and safe authentication code", () => {
+test("client diagnostics report a readable status and safe authentication code", () => {
   const form = fs.readFileSync("src/components/auth/login-form.tsx", "utf8");
-  assert.match(form, /FleetGuard login request failed/);
-  assert.match(form, /status: response\.status/);
-  assert.match(form, /code: result\.code/);
+  assert.match(form, /FleetGuard login request failed: HTTP \$\{response\.status\}/);
+  assert.match(form, /result\.code \?\? "AUTH_REQUEST_FAILED"/);
   assert.doesNotMatch(form, /console\.(?:log|warn|error)\([^\n]*(?:username|password|FormData)/);
 });
