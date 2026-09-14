@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "postinstall": "prisma generate",
     "db:generate": "prisma generate",
-    "db:push": "prisma db push"
+    "db:push": "prisma db push",
+    "users:reset-admin-password": "node scripts/reset-admin-password.mjs"
   },
   "dependencies": {
     "@prisma/client": "^6.16.1",
