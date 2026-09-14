@@ -40,6 +40,8 @@ test("login keeps secure cookie policy and safe diagnostic event codes", () => {
   assert.match(route, /httpOnly: true/);
   assert.match(route, /sameSite: "lax"/);
   assert.match(route, /secure: process\.env\.NODE_ENV === "production"/);
+  assert.match(route, /startsWith: `\$\{normalizedLogin\}@`/);
+  assert.match(route, /usernameMatches\.length === 1/);
   assert.doesNotMatch(route, /console\.(?:log|warn|error)\([^\n]*(?:password|passwordHash|SESSION_SECRET|DATABASE_URL)/);
 });
 
@@ -47,5 +49,6 @@ test("client diagnostics report a readable status and safe authentication code",
   const form = fs.readFileSync("src/components/auth/login-form.tsx", "utf8");
   assert.match(form, /FleetGuard login request failed: HTTP \$\{response\.status\}/);
   assert.match(form, /result\.code \?\? "AUTH_REQUEST_FAILED"/);
+  assert.match(form, /Username or email/);
   assert.doesNotMatch(form, /console\.(?:log|warn|error)\([^\n]*(?:username|password|FormData)/);
 });

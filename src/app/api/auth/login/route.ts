@@ -21,6 +21,18 @@ function logAuthenticationFailure(event: string, details: Record<string, unknown
   });
 }
 
+async function findUserForLogin(login: string) {
+  const normalizedLogin = login.toLowerCase();
+  const emailUser = await db.user.findUnique({ where: { email: normalizedLogin } });
+  if (emailUser || normalizedLogin.includes("@")) return emailUser;
+
+  const usernameMatches = await db.user.findMany({
+    where: { email: { startsWith: `${normalizedLogin}@`, mode: "insensitive" } },
+    take: 2,
+  });
+  return usernameMatches.length === 1 ? usernameMatches[0] : null;
+}
+
 export async function POST(request: Request) {
   let body: LoginBody;
   try {
@@ -68,7 +80,7 @@ export async function POST(request: Request) {
 
     user = legacyUser
       ? await db.user.findUnique({ where: { id: legacyUser.id } })
-      : await db.user.findUnique({ where: { email: login.toLowerCase() } });
+      : await findUserForLogin(login);
 
     if (!user || (!legacyUser && !verifyPassword(password, user.passwordHash))) {
       console.warn("Authentication rejected", {
