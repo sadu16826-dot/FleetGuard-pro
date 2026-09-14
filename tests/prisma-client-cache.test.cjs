@@ -9,7 +9,7 @@ const source = ts.transpileModule(fs.readFileSync("src/lib/db.ts", "utf8"), {
   compilerOptions: { module: ts.ModuleKind.CommonJS },
 }).outputText;
 
-function load(globalState, datamodel) {
+function load(globalState, datamodel, nodeEnv = "development") {
   class PrismaClient {
     driverLicence = { findMany() {} };
     async $disconnect() { this.disconnected = true; }
@@ -18,7 +18,7 @@ function load(globalState, datamodel) {
   vm.runInNewContext(source, {
     exports,
     globalThis: globalState,
-    process: { env: { NODE_ENV: "development" } },
+    process: { env: { NODE_ENV: nodeEnv } },
     console,
     require: () => ({ PrismaClient, Prisma: { dmmf: { datamodel } } }),
   });
@@ -43,4 +43,10 @@ test("reuses the connection across refreshes and replaces it on schema change", 
   const next = load(state, { models: [{ name: "DriverLicence", fields: ["documents"] }] });
   assert.notEqual(next, first);
   assert.equal(first.disconnected, true);
+});
+
+test("reuses the connection in a warm production runtime", () => {
+  const state = {};
+  const schema = { models: [{ name: "DriverLicence" }] };
+  assert.equal(load(state, schema, "production"), load(state, schema, "production"));
 });

@@ -14,12 +14,10 @@ export const db = cachedClient ?? new PrismaClient({
   transactionOptions: { maxWait: 10000, timeout: 20000 },
 });
 
-if (process.env.NODE_ENV !== "production") {
-  if (globalForPrisma.prisma && globalForPrisma.prisma !== db) {
-    void globalForPrisma.prisma.$disconnect().catch((error: unknown) => {
-      console.error("Unable to disconnect the stale Prisma client", error);
-    });
-  }
-  globalForPrisma.prisma = db;
-  globalForPrisma.prismaSchema = schema;
+if (globalForPrisma.prisma && globalForPrisma.prisma !== db) {
+  void globalForPrisma.prisma.$disconnect().catch((error: unknown) => {
+    console.error("Unable to disconnect the stale Prisma client", error);
+  });
 }
+globalForPrisma.prisma = db;
+globalForPrisma.prismaSchema = schema;
