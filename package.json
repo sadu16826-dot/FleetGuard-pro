@@ -10,6 +10,7 @@
     "postinstall": "prisma generate",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
+    "db:clean": "node --env-file=.env scripts/clean-database.mjs",
     "users:reset-admin-password": "node scripts/reset-admin-password.mjs"
   },
   "dependencies": {
