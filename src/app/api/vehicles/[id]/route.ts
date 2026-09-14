@@ -101,12 +101,6 @@ export async function PATCH(
     const complete = {
       ...current,
       ...input,
-      purchasePrice:
-        input.purchasePrice == null ? undefined : Number(input.purchasePrice),
-      currentEstimatedValue:
-        input.currentEstimatedValue == null
-          ? undefined
-          : Number(input.currentEstimatedValue),
     } as unknown as VehicleFormValues;
     const errors = validateVehicle(complete, current.currentKm);
     if (Object.keys(errors).length)
@@ -138,20 +132,7 @@ export async function PATCH(
           "chassisNumber" in input ? optional(input.chassisNumber) : undefined,
         engineNumber:
           "engineNumber" in input ? optional(input.engineNumber) : undefined,
-        vin: "vin" in input ? optional(input.vin) : undefined,
         currentKm: input.currentKm,
-        engineCapacity:
-          "engineCapacity" in input
-            ? optional(input.engineCapacity)
-            : undefined,
-        batteryType:
-          "batteryType" in input ? optional(input.batteryType) : undefined,
-        batteryCapacity:
-          "batteryCapacity" in input
-            ? optional(input.batteryCapacity)
-            : undefined,
-        vehicleWeight:
-          "vehicleWeight" in input ? optional(input.vehicleWeight) : undefined,
         ownerName: "ownerName" in input ? optional(input.ownerName) : undefined,
         ownershipType:
           "ownershipType" in input
@@ -159,14 +140,6 @@ export async function PATCH(
             : undefined,
         purchaseDate:
           "purchaseDate" in input ? date(input.purchaseDate) : undefined,
-        purchasePrice: input.purchasePrice,
-        currentEstimatedValue: input.currentEstimatedValue,
-        financeStatus:
-          "financeStatus" in input ? optional(input.financeStatus) : undefined,
-        financeCompany:
-          "financeCompany" in input
-            ? optional(input.financeCompany)
-            : undefined,
         registrationDate:
           "registrationDate" in input
             ? date(input.registrationDate)
@@ -175,20 +148,13 @@ export async function PATCH(
           "registrationState" in input
             ? optional(input.registrationState)
             : undefined,
-        registrationAuthority:
-          "registrationAuthority" in input
-            ? optional(input.registrationAuthority)
-            : undefined,
         rcNumber: "rcNumber" in input ? optional(input.rcNumber) : undefined,
-        vehicleClass:
-          "vehicleClass" in input ? optional(input.vehicleClass) : undefined,
         lastServiceDate:
           "lastServiceDate" in input ? date(input.lastServiceDate) : undefined,
         lastServiceKm: input.lastServiceKm,
         nextServiceDate:
           "nextServiceDate" in input ? date(input.nextServiceDate) : undefined,
         nextServiceKm: input.nextServiceKm,
-        serviceInterval: input.serviceInterval,
         status: input.status as never,
         activities: {
           create: {

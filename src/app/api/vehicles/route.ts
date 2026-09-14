@@ -95,29 +95,17 @@ export async function POST(request: Request) {
         seatingCapacity: values.seatingCapacity ?? null,
         chassisNumber: optional(values.chassisNumber),
         engineNumber: optional(values.engineNumber),
-        vin: optional(values.vin),
         currentKm: values.currentKm,
-        engineCapacity: optional(values.engineCapacity),
-        batteryType: optional(values.batteryType),
-        batteryCapacity: optional(values.batteryCapacity),
-        vehicleWeight: optional(values.vehicleWeight),
         ownerName: optional(values.ownerName),
         ownershipType: (values.ownershipType || null) as never,
         purchaseDate: date(values.purchaseDate),
-        purchasePrice: values.purchasePrice ?? null,
-        currentEstimatedValue: values.currentEstimatedValue ?? null,
-        financeStatus: optional(values.financeStatus),
-        financeCompany: optional(values.financeCompany),
         registrationDate: date(values.registrationDate),
         registrationState: optional(values.registrationState),
-        registrationAuthority: optional(values.registrationAuthority),
         rcNumber: optional(values.rcNumber),
-        vehicleClass: optional(values.vehicleClass),
         lastServiceDate: date(values.lastServiceDate),
         lastServiceKm: values.lastServiceKm ?? null,
         nextServiceDate: date(values.nextServiceDate),
         nextServiceKm: values.nextServiceKm ?? null,
-        serviceInterval: values.serviceInterval ?? null,
         status: status as never,
         activities: {
           create: {
@@ -139,9 +127,7 @@ export async function POST(request: Request) {
         ? "A vehicle with this vehicle ID already exists."
         : target.includes("registration_number")
           ? "A vehicle with this registration number already exists."
-          : target.includes("vin")
-            ? "A vehicle with this VIN already exists."
-            : target.includes("chassis_number")
+          : target.includes("chassis_number")
               ? "A vehicle with this chassis number already exists."
               : "A vehicle with this engine number already exists.";
       return NextResponse.json(

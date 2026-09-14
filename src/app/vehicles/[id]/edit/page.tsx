@@ -35,33 +35,17 @@ export default async function EditVehiclePage({
     seatingCapacity: vehicle.seatingCapacity ?? undefined,
     chassisNumber: vehicle.chassisNumber ?? undefined,
     engineNumber: vehicle.engineNumber ?? undefined,
-    vin: vehicle.vin ?? undefined,
     currentKm: vehicle.currentKm,
-    engineCapacity: vehicle.engineCapacity ?? undefined,
-    batteryType: vehicle.batteryType ?? undefined,
-    batteryCapacity: vehicle.batteryCapacity ?? undefined,
-    vehicleWeight: vehicle.vehicleWeight ?? undefined,
     ownerName: vehicle.ownerName ?? undefined,
     ownershipType: vehicle.ownershipType ?? undefined,
     purchaseDate: dateValue(vehicle.purchaseDate),
-    purchasePrice: vehicle.purchasePrice
-      ? Number(vehicle.purchasePrice)
-      : undefined,
-    currentEstimatedValue: vehicle.currentEstimatedValue
-      ? Number(vehicle.currentEstimatedValue)
-      : undefined,
-    financeStatus: vehicle.financeStatus ?? undefined,
-    financeCompany: vehicle.financeCompany ?? undefined,
     registrationDate: dateValue(vehicle.registrationDate),
     registrationState: vehicle.registrationState ?? undefined,
-    registrationAuthority: vehicle.registrationAuthority ?? undefined,
     rcNumber: vehicle.rcNumber ?? undefined,
-    vehicleClass: vehicle.vehicleClass ?? undefined,
     lastServiceDate: dateValue(vehicle.lastServiceDate),
     lastServiceKm: vehicle.lastServiceKm ?? undefined,
     nextServiceDate: dateValue(vehicle.nextServiceDate),
     nextServiceKm: vehicle.nextServiceKm ?? undefined,
-    serviceInterval: vehicle.serviceInterval ?? undefined,
     status: vehicle.status,
   };
   return (
