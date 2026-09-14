@@ -63,7 +63,7 @@ export default async function EditVehiclePage({
           Update the saved vehicle information and operational status.
         </p>
       </div>
-      <VehicleForm vehicleId={id} initialData={initialData} />
+      <VehicleForm vehicleId={id} initialData={initialData} initialPhotoUrl={vehicle.primaryPhotoUrl} />
     </div>
   );
 }
