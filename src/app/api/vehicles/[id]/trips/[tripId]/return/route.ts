@@ -20,7 +20,10 @@ export async function POST(
 ) {
   try {
     const { id, tripId } = await params;
-    const { user } = await accessibleVehicle(id, true);
+    const { user } = await accessibleVehicle(id, {
+      module: "TRIPS",
+      action: "EDIT",
+    });
     const form = await request.formData();
     const returnDate = text(form, "returnDate");
     const returnTime = text(form, "returnTime");
@@ -40,6 +43,20 @@ export async function POST(
         { message: "Active trip could not be found." },
         { status: 404 },
       );
+    if (user.role === "DRIVER") {
+      const driver = await db.driver.findFirst({
+        where: { companyId: user.companyId!, email: user.email, status: "ACTIVE" },
+        select: { id: true },
+      });
+      if (driver?.id !== trip.driverId)
+        return NextResponse.json(
+          {
+            code: "TRIP_RETURN_FORBIDDEN",
+            message: "You can only return trips assigned to you.",
+          },
+          { status: 403 },
+        );
+    }
     if (!returnDate || !returnTime)
       return NextResponse.json(
         { message: "Return date and return time are required." },
