@@ -1,7 +1,7 @@
 import { del } from "@vercel/blob";
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { NextResponse } from "next/server";
-import { accessibleVehicle, accessFailure } from "@/lib/access-control";
+import { AccessError, accessibleVehicle, accessFailure } from "@/lib/access-control";
 import { MAX_TRIP_PHOTO_SIZE, TRIP_PHOTO_TYPES } from "@/lib/trip-photo-upload";
 
 const types = new Set<string>(TRIP_PHOTO_TYPES);
@@ -19,7 +19,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       return blobError("Vehicle photo storage is temporarily unavailable.", "BLOB_CONFIGURATION_MISSING", 503);
     const { id } = await params;
     const body = await request.json() as HandleUploadBody;
-    if (body.type === "blob.generate-client-token") await accessibleVehicle(id, true);
+    if (body.type === "blob.generate-client-token")
+      await accessibleVehicle(id, { module: "TRIPS", action: "CREATE" });
     const response = await handleUpload({
       body,
       request,
@@ -37,6 +38,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     });
     return NextResponse.json(response);
   } catch (error) {
+    if (error instanceof AccessError)
+      return blobError(error.message, error.status === 401 ? "AUTHENTICATION_REQUIRED" : "TRIP_UPLOAD_FORBIDDEN", error.status);
     if (error instanceof SyntaxError)
       return blobError("The photo upload request was invalid.", "BLOB_CLIENT_TOKEN_FAILED", 400);
     if (error instanceof Error && error.message === "Invalid vehicle photo upload.")
@@ -50,7 +53,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     if (!process.env.BLOB_READ_WRITE_TOKEN)
       return blobError("Vehicle photo storage is temporarily unavailable.", "BLOB_CONFIGURATION_MISSING", 503);
     const { id } = await params;
-    await accessibleVehicle(id, true);
+    await accessibleVehicle(id, { module: "TRIPS", action: "CREATE" });
     const { urls } = await request.json() as { urls?: unknown };
     if (!Array.isArray(urls) || urls.some(url => typeof url !== "string" || !url.includes(`/fleetguard/trips/${id}/pre-trip/`)))
       return NextResponse.json({ message: "Invalid vehicle photo cleanup request." }, { status: 400 });

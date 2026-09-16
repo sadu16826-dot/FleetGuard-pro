@@ -53,7 +53,10 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
-    const { user, vehicle } = await accessibleVehicle(id, true);
+    const { user, vehicle } = await accessibleVehicle(id, {
+      module: "TRIPS",
+      action: "CREATE",
+    });
     const form = await request.formData();
     const driverId = text(form, "driverId");
     const purpose = text(form, "purpose").trim();
