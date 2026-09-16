@@ -9,10 +9,14 @@ const contentTypes = ["image/jpeg", "image/png", "image/webp"];
 
 export const runtime = "nodejs";
 
+function blobError(message: string, code: string, status: number) {
+  return NextResponse.json({ code, message }, { status });
+}
+
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     if (!process.env.BLOB_READ_WRITE_TOKEN)
-      return NextResponse.json({ message: "Vehicle photo storage is temporarily unavailable." }, { status: 503 });
+      return blobError("Vehicle photo storage is temporarily unavailable.", "BLOB_CONFIGURATION_MISSING", 503);
     const { id } = await params;
     const body = await request.json() as HandleUploadBody;
     if (body.type === "blob.generate-client-token") await accessibleVehicle(id, true);
@@ -33,6 +37,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     });
     return NextResponse.json(response);
   } catch (error) {
+    if (error instanceof SyntaxError)
+      return blobError("The photo upload request was invalid.", "BLOB_CLIENT_TOKEN_FAILED", 400);
+    if (error instanceof Error && error.message === "Invalid vehicle photo upload.")
+      return blobError("The photo upload request was invalid.", "INVALID_PHOTO", 400);
     return accessFailure(error, "Vehicle photo storage is temporarily unavailable.");
   }
 }
@@ -40,7 +48,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     if (!process.env.BLOB_READ_WRITE_TOKEN)
-      return NextResponse.json({ message: "Vehicle photo storage is temporarily unavailable." }, { status: 503 });
+      return blobError("Vehicle photo storage is temporarily unavailable.", "BLOB_CONFIGURATION_MISSING", 503);
     const { id } = await params;
     await accessibleVehicle(id, true);
     const { urls } = await request.json() as { urls?: unknown };
