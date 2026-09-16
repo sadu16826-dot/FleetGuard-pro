@@ -6,7 +6,7 @@ import { FormEvent, ReactNode, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FileUp, Fuel, LoaderCircle, Play, RotateCcw, ShieldAlert, Wrench, X } from "lucide-react";
 import { PostTripPhotoFields, PreTripPhotoFields } from "@/components/vehicles/pre-trip-photo-fields";
-import { upload } from "@vercel/blob/client";
+import { upload as blobUpload } from "@vercel/blob/client";
 import { MAX_TRIP_PHOTO_SIZE, TRIP_PHOTO_TYPES } from "@/lib/trip-photo-upload";
 import type { VehicleStatus } from "@/types/vehicle";
 
@@ -14,6 +14,23 @@ type DriverOption={id:string;name:string;phone:string};
 type ActiveTrip={id:string;destination:string;driverName:string;startKm:number|null};
 type Action="trip"|"return"|"service"|"fuel"|"issue"|"document";
 const inputClass="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm outline-none focus:border-blue-500";
+const REQUEST_TIMEOUT_MS=60_000;
+
+async function upload(pathname:Parameters<typeof blobUpload>[0],body:Parameters<typeof blobUpload>[1],options:Parameters<typeof blobUpload>[2]){
+  const controller=new AbortController();
+  const timeout=setTimeout(()=>controller.abort(),REQUEST_TIMEOUT_MS);
+  try{return await blobUpload(pathname,body,{...options,abortSignal:controller.signal});}
+  catch(error){if(error instanceof DOMException&&error.name==="AbortError")throw new Error("Vehicle photo upload timed out. Please try again.");throw error;}
+  finally{clearTimeout(timeout);}
+}
+
+async function fetch(input:RequestInfo|URL,init?:RequestInit){
+  const controller=new AbortController();
+  const timeout=setTimeout(()=>controller.abort(),REQUEST_TIMEOUT_MS);
+  try{return await globalThis.fetch(input,{...init,signal:init?.signal??controller.signal});}
+  catch(error){if(error instanceof DOMException&&error.name==="AbortError")throw new Error("The trip request timed out. Please try again.");throw error;}
+  finally{clearTimeout(timeout);}
+}
 
 export function VehicleActions({vehicle,drivers,activeTrip}:{vehicle:{id:string;vehicleName:string;status:VehicleStatus;currentKm:number;fuelType:string};drivers:DriverOption[];activeTrip?:ActiveTrip}){
   const router=useRouter();const[action,setAction]=useState<Action>();const[loading,setLoading]=useState(false);const[message,setMessage]=useState("");const[error,setError]=useState("");

@@ -103,7 +103,10 @@ export async function POST(
       !validPercent(batteryPercentage)
     )
       return NextResponse.json(
-        { message: "Enter a valid trip date and fuel/battery percentage." },
+        {
+          code: "TRIP_VALIDATION_ERROR",
+          message: "Enter a valid trip date and fuel/battery percentage between 0 and 100.",
+        },
         { status: 400 },
       );
     const photos = readTripPhotoReferences(form);

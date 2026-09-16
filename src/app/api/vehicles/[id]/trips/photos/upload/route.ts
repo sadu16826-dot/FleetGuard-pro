@@ -6,11 +6,40 @@ import { MAX_TRIP_PHOTO_SIZE, TRIP_PHOTO_TYPES } from "@/lib/trip-photo-upload";
 
 const types = new Set<string>(TRIP_PHOTO_TYPES);
 const contentTypes = ["image/jpeg", "image/png", "image/webp"];
+const HANDLE_UPLOAD_TIMEOUT_MS = 45_000;
 
 export const runtime = "nodejs";
 
 function blobError(message: string, code: string, status: number) {
   return NextResponse.json({ code, message }, { status });
+}
+
+async function handleUploadWithTimeout(body: HandleUploadBody, request: Request, id: string) {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      handleUpload({
+        body,
+        request,
+        onBeforeGenerateToken: async (pathname, clientPayload) => {
+          const payload = JSON.parse(clientPayload ?? "{}") as { photoType?: string };
+          if (!types.has(payload.photoType ?? "") || !pathname.startsWith(`fleetguard/trips/${id}/pre-trip/`))
+            throw new Error("Invalid vehicle photo upload.");
+          return {
+            addRandomSuffix: true,
+            allowedContentTypes: contentTypes,
+            maximumSizeInBytes: MAX_TRIP_PHOTO_SIZE,
+            validUntil: Date.now() + 10 * 60 * 1000,
+          };
+        },
+      }),
+      new Promise<never>((_, reject) => {
+        timeout = setTimeout(() => reject(new Error("BLOB_UPLOAD_TIMEOUT")), HANDLE_UPLOAD_TIMEOUT_MS);
+      }),
+    ]);
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
 }
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -21,21 +50,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const body = await request.json() as HandleUploadBody;
     if (body.type === "blob.generate-client-token")
       await accessibleVehicle(id, { module: "TRIPS", action: "CREATE" });
-    const response = await handleUpload({
-      body,
-      request,
-      onBeforeGenerateToken: async (pathname, clientPayload) => {
-        const payload = JSON.parse(clientPayload ?? "{}") as { photoType?: string };
-        if (!types.has(payload.photoType ?? "") || !pathname.startsWith(`fleetguard/trips/${id}/pre-trip/`))
-          throw new Error("Invalid vehicle photo upload.");
-        return {
-          addRandomSuffix: true,
-          allowedContentTypes: contentTypes,
-          maximumSizeInBytes: MAX_TRIP_PHOTO_SIZE,
-          validUntil: Date.now() + 10 * 60 * 1000,
-        };
-      },
-    });
+    const response = await handleUploadWithTimeout(body, request, id);
     return NextResponse.json(response);
   } catch (error) {
     if (error instanceof AccessError)
@@ -44,6 +59,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       return blobError("The photo upload request was invalid.", "BLOB_CLIENT_TOKEN_FAILED", 400);
     if (error instanceof Error && error.message === "Invalid vehicle photo upload.")
       return blobError("The photo upload request was invalid.", "INVALID_PHOTO", 400);
+    if (error instanceof Error && error.message === "BLOB_UPLOAD_TIMEOUT")
+      return blobError("Unable to upload vehicle photo.", "BLOB_UPLOAD_FAILED", 504);
     return accessFailure(error, "Vehicle photo storage is temporarily unavailable.");
   }
 }
