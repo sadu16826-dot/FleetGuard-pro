@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { accessibleVehicle, accessFailure } from "@/lib/access-control";
 import {
   photoLabel,
-  readTripPhotos,
+  readTripPhotoReferences,
   TripPhotoUploadError,
 } from "@/lib/trip-photo-upload";
 
@@ -103,7 +103,7 @@ export async function POST(
         { message: "Enter a valid trip date and fuel/battery percentage." },
         { status: 400 },
       );
-    const photos = await readTripPhotos(form);
+    const photos = readTripPhotoReferences(form);
     const result = await db.$transaction(
       async (tx) => {
         const driver = await tx.driver.findFirst({

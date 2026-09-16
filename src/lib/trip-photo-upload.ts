@@ -1,6 +1,6 @@
 export const TRIP_PHOTO_TYPES = ["FRONT", "REAR", "LEFT", "RIGHT"] as const;
 const ALLOWED_IMAGES = new Set(["image/jpeg", "image/png", "image/webp"]);
-const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+export const MAX_TRIP_PHOTO_SIZE = 5 * 1024 * 1024;
 
 export class TripPhotoUploadError extends Error {
   constructor(public kind: "REQUIRED" | "INVALID", public photoType: typeof TRIP_PHOTO_TYPES[number]) {
@@ -18,11 +18,25 @@ export async function readTripPhotos(form: FormData) {
   return Promise.all(TRIP_PHOTO_TYPES.map(async photoType => {
     const value = form.get(`photo_${photoType}`);
     if (!(value instanceof File) || value.size === 0) throw new TripPhotoUploadError("REQUIRED", photoType);
-    if (!ALLOWED_IMAGES.has(value.type) || value.size > MAX_IMAGE_SIZE) throw new TripPhotoUploadError("INVALID", photoType);
+    if (!ALLOWED_IMAGES.has(value.type) || value.size > MAX_TRIP_PHOTO_SIZE) throw new TripPhotoUploadError("INVALID", photoType);
     const data = new Uint8Array(await value.arrayBuffer());
     if (!hasValidSignature(data, value.type)) throw new TripPhotoUploadError("INVALID", photoType);
     return { photoType, data, mimeType: value.type, fileName: value.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 120), size: value.size };
   }));
+}
+
+export function readTripPhotoReferences(form: FormData) {
+  return TRIP_PHOTO_TYPES.map(photoType => {
+    const storageUrl = String(form.get(`photoUrl_${photoType}`) ?? "");
+    const mimeType = String(form.get(`photoMime_${photoType}`) ?? "");
+    const fileName = String(form.get(`photoName_${photoType}`) ?? "");
+    const size = Number(form.get(`photoSize_${photoType}`));
+    let url: URL;
+    try { url = new URL(storageUrl); } catch { throw new TripPhotoUploadError("REQUIRED", photoType); }
+    if (!url.hostname.endsWith(".blob.vercel-storage.com") || !ALLOWED_IMAGES.has(mimeType) || !fileName || !Number.isFinite(size) || size <= 0 || size > MAX_TRIP_PHOTO_SIZE)
+      throw new TripPhotoUploadError("INVALID", photoType);
+    return { photoType, storageUrl, mimeType, fileName: fileName.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 120), size };
+  });
 }
 
 export function photoLabel(photoType: string) {

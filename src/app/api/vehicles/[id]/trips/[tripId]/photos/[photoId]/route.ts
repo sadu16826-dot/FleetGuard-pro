@@ -13,13 +13,16 @@ export async function GET(
     await accessibleVehicle(id);
     const photo = await db.tripVehiclePhoto.findFirst({
       where: { id: photoId, vehicleId: id, tripId },
-      select: { data: true, mimeType: true, fileName: true },
+      select: { data: true, storageUrl: true, mimeType: true, fileName: true },
     });
     if (!photo)
       return NextResponse.json(
         { message: "Trip photo could not be found." },
         { status: 404 },
       );
+    if (photo.storageUrl) return NextResponse.redirect(photo.storageUrl);
+    if (!photo.data)
+      return NextResponse.json({ message: "Trip photo could not be found." }, { status: 404 });
     return new Response(new Uint8Array(photo.data), {
       headers: {
         "Content-Type": photo.mimeType,
