@@ -79,14 +79,18 @@ export async function driverForUser(user: Awaited<ReturnType<typeof authenticate
       companyId: user.companyId!,
       status: "ACTIVE",
       OR: [
-        { email: user.email },
-        { name: user.name },
+        { email: { equals: user.email, mode: "insensitive" } },
+        { name: { equals: user.name, mode: "insensitive" } },
       ],
     },
     select: { id: true, email: true, name: true },
   });
-  const exactEmail = candidates.filter((driver) => driver.email === user.email);
-  const matches = exactEmail.length ? exactEmail : candidates.filter((driver) => driver.name === user.name);
+  const normalizedEmail = user.email.toLowerCase();
+  const normalizedName = user.name.toLowerCase();
+  const exactEmail = candidates.filter((driver) => driver.email?.toLowerCase() === normalizedEmail);
+  const matches = exactEmail.length
+    ? exactEmail
+    : candidates.filter((driver) => driver.name.toLowerCase() === normalizedName);
   const driver = matches.length === 1 ? matches[0] : null;
   if (process.env.NODE_ENV !== "production")
     console.info("Driver identity resolution", {
