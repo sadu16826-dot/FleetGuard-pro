@@ -6,7 +6,7 @@ import { FormEvent, ReactNode, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FileUp, Fuel, LoaderCircle, Play, RotateCcw, ShieldAlert, Wrench, X } from "lucide-react";
 import { PostTripPhotoFields, PreTripPhotoFields } from "@/components/vehicles/pre-trip-photo-fields";
-import { upload as blobUpload } from "@vercel/blob/client";
+import { uploadPresigned as blobUpload } from "@vercel/blob/client";
 import { MAX_TRIP_PHOTO_SIZE, TRIP_PHOTO_TYPES } from "@/lib/trip-photo-upload";
 import type { VehicleStatus } from "@/types/vehicle";
 

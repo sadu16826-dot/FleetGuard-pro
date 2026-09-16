@@ -1,5 +1,5 @@
-import { del } from "@vercel/blob";
-import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
+import { del, issueSignedToken } from "@vercel/blob";
+import { handleUploadPresigned, type HandleUploadPresignedBody } from "@vercel/blob/client";
 import { NextResponse } from "next/server";
 import { AccessError, accessibleVehicle, accessFailure } from "@/lib/access-control";
 import { MAX_TRIP_PHOTO_SIZE, TRIP_PHOTO_TYPES } from "@/lib/trip-photo-upload";
@@ -23,24 +23,35 @@ function logUploadEvent(event: string, vehicleId: string, photoType?: string, de
   });
 }
 
-async function handleUploadWithTimeout(body: HandleUploadBody, request: Request, id: string) {
+async function handleUploadWithTimeout(body: HandleUploadPresignedBody, request: Request, id: string) {
   let timeout: ReturnType<typeof setTimeout> | undefined;
   try {
     return await Promise.race([
-      handleUpload({
+      handleUploadPresigned({
         body,
         request,
-        onBeforeGenerateToken: async (pathname, clientPayload) => {
+        getSignedToken: async (pathname, clientPayload) => {
           const payload = JSON.parse(clientPayload ?? "{}") as { photoType?: string };
           if (!types.has(payload.photoType ?? "") || !pathname.startsWith(`fleetguard/trips/${id}/pre-trip/`))
             throw new Error("Invalid vehicle photo upload.");
-          return {
-            addRandomSuffix: true,
+          const token = await issueSignedToken({
+            pathname,
+            operations: ["put"],
             allowedContentTypes: contentTypes,
             maximumSizeInBytes: MAX_TRIP_PHOTO_SIZE,
             validUntil: Date.now() + 10 * 60 * 1000,
+          });
+          return {
+            token,
+            urlOptions: {
+              addRandomSuffix: true,
+              allowedContentTypes: contentTypes,
+              maximumSizeInBytes: MAX_TRIP_PHOTO_SIZE,
+              validUntil: Date.now() + 10 * 60 * 1000,
+            },
           };
         },
+        webhookPublicKey: process.env.BLOB_WEBHOOK_PUBLIC_KEY,
       }),
       new Promise<never>((_, reject) => {
         timeout = setTimeout(() => reject(new Error("BLOB_UPLOAD_TIMEOUT")), HANDLE_UPLOAD_TIMEOUT_MS);
@@ -56,16 +67,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   let vehicleId = "unknown";
   let photoType: string | undefined;
   try {
-    if (!process.env.BLOB_READ_WRITE_TOKEN)
-      return blobError("Vehicle photo storage is temporarily unavailable.", "BLOB_CONFIGURATION_MISSING", 503);
     const { id } = await params;
     vehicleId = id;
-    const body = await request.json() as HandleUploadBody;
-    photoType = body.type === "blob.generate-client-token" && typeof body.payload.clientPayload === "string"
+    const body = await request.json() as HandleUploadPresignedBody;
+    photoType = body.type === "blob.generate-presigned-url" && typeof body.payload.clientPayload === "string"
       ? (JSON.parse(body.payload.clientPayload) as { photoType?: string }).photoType
       : undefined;
     logUploadEvent("request-start", id, photoType, { requestType: body.type });
-    if (body.type === "blob.generate-client-token")
+    if (body.type === "blob.generate-presigned-url")
       await accessibleVehicle(id, { module: "TRIPS", action: "CREATE" });
     const response = await handleUploadWithTimeout(body, request, id);
     logUploadEvent("request-complete", id, photoType, { durationMs: Date.now() - startedAt, status: 200 });
@@ -92,8 +101,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    if (!process.env.BLOB_READ_WRITE_TOKEN)
-      return blobError("Vehicle photo storage is temporarily unavailable.", "BLOB_CONFIGURATION_MISSING", 503);
     const { id } = await params;
     await accessibleVehicle(id, { module: "TRIPS", action: "CREATE" });
     const { urls } = await request.json() as { urls?: unknown };
