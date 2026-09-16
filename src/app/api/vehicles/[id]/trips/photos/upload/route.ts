@@ -14,6 +14,15 @@ function blobError(message: string, code: string, status: number) {
   return NextResponse.json({ code, message }, { status });
 }
 
+function logUploadEvent(event: string, vehicleId: string, photoType?: string, details?: Record<string, unknown>) {
+  console.info("Trip photo upload", {
+    event,
+    vehicleId,
+    ...(photoType ? { photoType } : {}),
+    ...details,
+  });
+}
+
 async function handleUploadWithTimeout(body: HandleUploadBody, request: Request, id: string) {
   let timeout: ReturnType<typeof setTimeout> | undefined;
   try {
@@ -43,16 +52,32 @@ async function handleUploadWithTimeout(body: HandleUploadBody, request: Request,
 }
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const startedAt = Date.now();
+  let vehicleId = "unknown";
+  let photoType: string | undefined;
   try {
     if (!process.env.BLOB_READ_WRITE_TOKEN)
       return blobError("Vehicle photo storage is temporarily unavailable.", "BLOB_CONFIGURATION_MISSING", 503);
     const { id } = await params;
+    vehicleId = id;
     const body = await request.json() as HandleUploadBody;
+    photoType = body.type === "blob.generate-client-token" && typeof body.payload.clientPayload === "string"
+      ? (JSON.parse(body.payload.clientPayload) as { photoType?: string }).photoType
+      : undefined;
+    logUploadEvent("request-start", id, photoType, { requestType: body.type });
     if (body.type === "blob.generate-client-token")
       await accessibleVehicle(id, { module: "TRIPS", action: "CREATE" });
     const response = await handleUploadWithTimeout(body, request, id);
+    logUploadEvent("request-complete", id, photoType, { durationMs: Date.now() - startedAt, status: 200 });
     return NextResponse.json(response);
   } catch (error) {
+    const code = error instanceof AccessError
+      ? error.status === 401 ? "AUTHENTICATION_REQUIRED" : "TRIP_UPLOAD_FORBIDDEN"
+      : error instanceof Error && error.message === "BLOB_UPLOAD_TIMEOUT" ? "BLOB_UPLOAD_FAILED" : "BLOB_CLIENT_TOKEN_FAILED";
+    const status = error instanceof AccessError
+      ? error.status
+      : code === "BLOB_UPLOAD_FAILED" ? 504 : code === "BLOB_CLIENT_TOKEN_FAILED" ? 400 : 500;
+    logUploadEvent("request-error", vehicleId, photoType, { durationMs: Date.now() - startedAt, status, code });
     if (error instanceof AccessError)
       return blobError(error.message, error.status === 401 ? "AUTHENTICATION_REQUIRED" : "TRIP_UPLOAD_FORBIDDEN", error.status);
     if (error instanceof SyntaxError)
