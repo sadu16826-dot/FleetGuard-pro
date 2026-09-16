@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { accessibleVehicle, accessFailure } from "@/lib/access-control";
+import { accessibleVehicle, accessFailure, driverForUser } from "@/lib/access-control";
 import {
   photoLabel,
   readTripPhotos,
@@ -36,7 +36,7 @@ export async function POST(
         vehicleId: id,
         status: { in: ["ACTIVE", "IN_PROGRESS"] },
       },
-      include: { vehicle: { select: { companyId: true } } },
+      include: { vehicle: { select: { companyId: true, currentDriverId: true } } },
     });
     if (!trip)
       return NextResponse.json(
@@ -44,11 +44,18 @@ export async function POST(
         { status: 404 },
       );
     if (user.role === "DRIVER") {
-      const driver = await db.driver.findFirst({
-        where: { companyId: user.companyId!, email: user.email, status: "ACTIVE" },
-        select: { id: true },
-      });
-      if (driver?.id !== trip.driverId)
+      const driver = await driverForUser(user);
+      if (process.env.NODE_ENV !== "production")
+        console.info("Return trip authorization", {
+          userId: user.id,
+          userRole: user.role,
+          resolvedDriverId: driver?.id ?? null,
+          vehicleId: id,
+          activeTripId: trip.id,
+          tripDriverId: trip.driverId,
+          assignedDriverId: trip.vehicle.currentDriverId,
+        });
+      if (!driver || driver.id !== trip.driverId || trip.vehicle.currentDriverId !== driver.id)
         return NextResponse.json(
           {
             code: "TRIP_RETURN_FORBIDDEN",

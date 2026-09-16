@@ -72,6 +72,32 @@ export async function accessibleVehicle(
   return { user, vehicle };
 }
 
+export async function driverForUser(user: Awaited<ReturnType<typeof authenticatedUser>>) {
+  if (user.role !== "DRIVER") return null;
+  const candidates = await db.driver.findMany({
+    where: {
+      companyId: user.companyId!,
+      status: "ACTIVE",
+      OR: [
+        { email: user.email },
+        { name: user.name },
+      ],
+    },
+    select: { id: true, email: true, name: true },
+  });
+  const exactEmail = candidates.filter((driver) => driver.email === user.email);
+  const matches = exactEmail.length ? exactEmail : candidates.filter((driver) => driver.name === user.name);
+  const driver = matches.length === 1 ? matches[0] : null;
+  if (process.env.NODE_ENV !== "production")
+    console.info("Driver identity resolution", {
+      userId: user.id,
+      userRole: user.role,
+      resolvedDriverId: driver?.id ?? null,
+      candidateDriverIds: candidates.map((candidate) => candidate.id),
+    });
+  return driver;
+}
+
 export function accessFailure(
   error: unknown,
   fallback = "Unable to complete this request.",
