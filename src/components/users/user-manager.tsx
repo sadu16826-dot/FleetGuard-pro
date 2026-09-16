@@ -4,11 +4,11 @@ import { FormEvent, useRef, useState } from "react";
 import { Pencil, ShieldCheck, UserPlus, UserRound } from "lucide-react";
 import type { UserRole } from "@/generated/prisma";
 import { Card } from "@/components/ui/card";
-import { roleLabel } from "@/lib/permissions";
+import { roleLabel, userRoles } from "@/lib/permissions";
 import { UserEditModal } from "@/components/users/user-edit-modal";
 
 type ManagedUser = { id: string; name: string; email: string; role: UserRole; active: boolean; createdAt: string; lastLoginAt: string | null };
-const roles: UserRole[] = ["ADMIN", "FLEET_MANAGER", "INSPECTOR", "DRIVER", "MAINTENANCE_STAFF", "FINANCE", "EMPLOYEE"];
+const roles: UserRole[] = [...userRoles];
 
 export function UserManager({ initialUsers, currentUserId }: { initialUsers: ManagedUser[]; currentUserId: string }) {
   const formRef = useRef<HTMLFormElement>(null);

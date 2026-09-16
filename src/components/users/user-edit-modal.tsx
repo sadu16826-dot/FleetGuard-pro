@@ -2,8 +2,8 @@
 
 import { FormEvent, useState } from "react";
 import { X } from "lucide-react";
-import { UserRole } from "@/generated/prisma";
-import { roleLabel } from "@/lib/permissions";
+import type { UserRole } from "@/generated/prisma";
+import { roleLabel, userRoles } from "@/lib/permissions";
 
 type EditableUser = {
   id: string;
@@ -70,7 +70,7 @@ export function UserEditModal({
           <label className="block text-xs font-semibold text-slate-700">Full Name<input value={user.name} readOnly className={`${field} bg-slate-50 text-slate-500`}/></label>
           <label className="block text-xs font-semibold text-slate-700">Email<input name="email" type="email" required defaultValue={user.email} className={field}/></label>
           <label className="block text-xs font-semibold text-slate-700">New Password<input name="password" type="password" minLength={10} autoComplete="new-password" placeholder="Leave blank to keep current password" className={field}/></label>
-          <label className="block text-xs font-semibold text-slate-700">Role<select name="role" required defaultValue={user.role} disabled={user.id === currentUserId} className={field}>{Object.values(UserRole).map((role) => <option key={role} value={role}>{roleLabel(role)}</option>)}</select></label>
+          <label className="block text-xs font-semibold text-slate-700">Role<select name="role" required defaultValue={user.role} disabled={user.id === currentUserId} className={field}>{userRoles.map((role) => <option key={role} value={role}>{roleLabel(role)}</option>)}</select></label>
           {user.id === currentUserId && <p className="text-xs text-slate-500">Your own administrator role is protected.</p>}
           {error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
           <div className="flex justify-end gap-2 pt-2"><button type="button" disabled={saving} onClick={onClose} className="rounded-lg border px-4 py-2 text-sm font-semibold">Cancel</button><button disabled={saving} className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{saving ? "Saving…" : "Save Changes"}</button></div>

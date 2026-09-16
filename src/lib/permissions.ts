@@ -1,5 +1,15 @@
 import type { UserRole } from "@/generated/prisma";
 
+export const userRoles = [
+  "ADMIN",
+  "FLEET_MANAGER",
+  "INSPECTOR",
+  "DRIVER",
+  "MAINTENANCE_STAFF",
+  "FINANCE",
+  "EMPLOYEE",
+] as const satisfies readonly UserRole[];
+
 export const modules = [
   "DASHBOARD",
   "VEHICLES",
