@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { accessibleVehicle, accessFailure, driverForUser } from "@/lib/access-control";
 import {
   photoLabel,
-  readTripPhotos,
+  readTripPhotoReferences,
   TripPhotoUploadError,
 } from "@/lib/trip-photo-upload";
 
@@ -87,7 +87,7 @@ export async function POST(
         { message: "Enter a valid return date and fuel/battery percentage." },
         { status: 400 },
       );
-    const photos = await readTripPhotos(form);
+    const photos = readTripPhotoReferences(form);
     const newDamage = checked(form, "newDamage");
     const accident = checked(form, "accident");
     const tyreProblem = checked(form, "tyreProblem");

@@ -31,8 +31,8 @@ async function handleUploadWithTimeout(body: HandleUploadPresignedBody, request:
         body,
         request,
         getSignedToken: async (pathname, clientPayload) => {
-          const payload = JSON.parse(clientPayload ?? "{}") as { photoType?: string };
-          if (!types.has(payload.photoType ?? "") || !pathname.startsWith(`fleetguard/trips/${id}/pre-trip/`))
+          const payload = JSON.parse(clientPayload ?? "{}") as { photoType?: string; phase?: string };
+          if (!types.has(payload.photoType ?? "") || !["pre-trip", "post-trip"].includes(payload.phase ?? "") || !pathname.startsWith(`fleetguard/trips/${id}/${payload.phase}/`))
             throw new Error("Invalid vehicle photo upload.");
           const token = await issueSignedToken({
             pathname,
@@ -70,12 +70,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const { id } = await params;
     vehicleId = id;
     const body = await request.json() as HandleUploadPresignedBody;
-    photoType = body.type === "blob.generate-presigned-url" && typeof body.payload.clientPayload === "string"
-      ? (JSON.parse(body.payload.clientPayload) as { photoType?: string }).photoType
-      : undefined;
+    const payload = body.type === "blob.generate-presigned-url" && typeof body.payload.clientPayload === "string"
+      ? JSON.parse(body.payload.clientPayload) as { photoType?: string; phase?: string } : undefined;
+    photoType = payload?.photoType;
     logUploadEvent("request-start", id, photoType, { requestType: body.type });
     if (body.type === "blob.generate-presigned-url")
-      await accessibleVehicle(id, { module: "TRIPS", action: "CREATE" });
+      await accessibleVehicle(id, { module: "TRIPS", action: payload?.phase === "post-trip" ? "EDIT" : "CREATE" });
     const response = await handleUploadWithTimeout(body, request, id);
     logUploadEvent("request-complete", id, photoType, { durationMs: Date.now() - startedAt, status: 200 });
     return NextResponse.json(response);
@@ -102,9 +102,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    await accessibleVehicle(id, { module: "TRIPS", action: "CREATE" });
+    await accessibleVehicle(id, { module: "TRIPS", action: "EDIT" });
     const { urls } = await request.json() as { urls?: unknown };
-    if (!Array.isArray(urls) || urls.some(url => typeof url !== "string" || !url.includes(`/fleetguard/trips/${id}/pre-trip/`)))
+    if (!Array.isArray(urls) || urls.some(url => typeof url !== "string" || !url.includes(`/fleetguard/trips/${id}/`)))
       return NextResponse.json({ message: "Invalid vehicle photo cleanup request." }, { status: 400 });
     if (urls.length) await del(urls);
     return NextResponse.json({ deleted: urls.length });
