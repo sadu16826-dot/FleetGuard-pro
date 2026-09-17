@@ -27,7 +27,6 @@ export async function POST(
     const form = await request.formData();
     const returnDate = text(form, "returnDate");
     const returnTime = text(form, "returnTime");
-    const selectedDriverId = text(form, "driverId");
     const endingKm = Number(text(form, "endingOdometer"));
     const fuelLevel = number(form, "fuelLevel");
     const batteryPercentage = number(form, "batteryPercentage");
@@ -44,20 +43,6 @@ export async function POST(
         { message: "Active trip could not be found." },
         { status: 404 },
       );
-    if (!selectedDriverId)
-      return NextResponse.json(
-        { code: "DRIVER_REQUIRED", message: "Please select a driver." },
-        { status: 400 },
-      );
-    const selectedDriver = await db.driver.findFirst({
-      where: { id: selectedDriverId, companyId: user.companyId!, status: "ACTIVE" },
-      select: { id: true },
-    });
-    if (!selectedDriver)
-      return NextResponse.json(
-        { code: "DRIVER_INVALID", message: "Select a valid active driver." },
-        { status: 400 },
-      );
     if (user.role === "DRIVER") {
       const driver = await driverForUser(user);
       if (process.env.NODE_ENV !== "production")
@@ -70,7 +55,7 @@ export async function POST(
           tripDriverId: trip.driverId,
           assignedDriverId: trip.vehicle.currentDriverId,
         });
-      if (!driver || selectedDriver.id !== driver.id || trip.driverId !== driver.id || trip.vehicle.currentDriverId !== driver.id)
+      if (!driver || trip.driverId !== driver.id || trip.vehicle.currentDriverId !== driver.id)
         return NextResponse.json(
           {
             code: "TRIP_RETURN_FORBIDDEN",
@@ -126,7 +111,6 @@ export async function POST(
         },
         data: {
           status: "COMPLETED",
-          driverId: selectedDriver.id,
           endKm: endingKm,
           endTime: returnedAt,
           returnFuelLevel: fuelLevel,
@@ -145,7 +129,7 @@ export async function POST(
           ...photo,
           tripId,
           vehicleId: id,
-          driverId: selectedDriver.id,
+          driverId: trip.driverId,
           uploadedById: user.id,
           phase: "POST_TRIP",
         })),
@@ -183,7 +167,7 @@ export async function POST(
           description: `Trip completed — ${distance.toLocaleString()} KM`,
           metadata: {
             tripId,
-            driverId: selectedDriver.id,
+            driverId: trip.driverId,
             status: vehicleStatus,
             returnCondition: "COMPLETED",
             preTripPhotoCount,
