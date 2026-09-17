@@ -41,7 +41,6 @@ export function SettingsForm({ initialCompany }: { initialCompany: Company }) {
         ["Fleet", "Vehicle status, types and fuel types are governed by the existing Vehicle model enums."],
         ["Inspection", "Daily inspections and checklist results remain in Inspection Management."],
         ["Maintenance", "Maintenance priorities and statuses remain attached to maintenance records."],
-        ["Tyre & Wheel", "Tyre condition and status values use the existing tyre data model."],
         ["Documents & compliance", "Document types and expiry dates remain managed by vehicle documents."],
         ["Notifications", "In-app notifications use the existing notification records and access rules."],
       ].map(([title, description]) => <div key={title} className="rounded-xl border border-slate-200 bg-white p-5"><div className="flex items-center gap-2 text-sm font-bold text-slate-900"><Check size={16} className="text-emerald-600"/>{title}</div><p className="mt-2 text-sm leading-6 text-slate-500">{description}</p><span className="mt-3 inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-slate-500">Existing system values</span></div>)}

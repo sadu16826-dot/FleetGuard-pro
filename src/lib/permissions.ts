@@ -17,7 +17,6 @@ export const modules = [
   "TRIPS",
   "INSPECTIONS",
   "MAINTENANCE",
-  "TYRES",
   "FUEL",
   "EXPENSES",
   "DOCUMENTS",
@@ -54,14 +53,14 @@ const permissionsByRole: Record<UserRole, ReadonlySet<Permission>> = {
   FLEET_MANAGER: new Set([
     ...manage(
       "VEHICLES", "DRIVERS", "TRIPS", "INSPECTIONS", "MAINTENANCE",
-      "TYRES", "FUEL", "EXPENSES", "DOCUMENTS", "ACCIDENTS",
+      "FUEL", "EXPENSES", "DOCUMENTS", "ACCIDENTS",
     ),
     ...view("DASHBOARD", "REPORTS"),
   ]),
   INSPECTOR: new Set([
     ...view(
       "DASHBOARD", "VEHICLES", "TRIPS", "INSPECTIONS", "MAINTENANCE",
-      "TYRES", "FUEL", "EXPENSES", "DOCUMENTS", "ACCIDENTS", "REPORTS",
+      "FUEL", "EXPENSES", "DOCUMENTS", "ACCIDENTS", "REPORTS",
     ),
     "INSPECTIONS:CREATE", "INSPECTIONS:APPROVE", "INSPECTIONS:UPLOAD",
   ]),
@@ -70,8 +69,8 @@ const permissionsByRole: Record<UserRole, ReadonlySet<Permission>> = {
     "TRIPS:CREATE", "TRIPS:EDIT",
   ]),
   MAINTENANCE_STAFF: new Set([
-    ...view("DASHBOARD", "VEHICLES", "MAINTENANCE", "TYRES", "DOCUMENTS"),
-    ...manage("MAINTENANCE", "TYRES"),
+    ...view("DASHBOARD", "VEHICLES", "MAINTENANCE", "DOCUMENTS"),
+    ...manage("MAINTENANCE"),
     "DOCUMENTS:CREATE", "DOCUMENTS:UPLOAD",
   ]),
   FINANCE: new Set([

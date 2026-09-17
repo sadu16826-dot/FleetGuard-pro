@@ -35,7 +35,7 @@ test("specialist roles are constrained to their responsibilities", () => {
 
 test("inspector can view the requested operational modules without mutation access", () => {
   const viewable = [
-    "MAINTENANCE", "TYRES", "FUEL", "EXPENSES", "DOCUMENTS", "ACCIDENTS", "REPORTS",
+    "MAINTENANCE", "FUEL", "EXPENSES", "DOCUMENTS", "ACCIDENTS", "REPORTS",
   ];
   for (const permissionModule of viewable) {
     assert.equal(moduleExports.can("INSPECTOR", permissionModule, "VIEW"), true);

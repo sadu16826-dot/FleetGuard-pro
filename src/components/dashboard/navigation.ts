@@ -1,4 +1,4 @@
-import { BarChart3, CarFront, CircleGauge, ClipboardCheck, FileCheck2, Fuel, LifeBuoy, Receipt, Settings, ShieldAlert, Truck, Users, Wrench } from "lucide-react";
+import { BarChart3, CarFront, CircleGauge, ClipboardCheck, FileCheck2, Fuel, Receipt, Settings, ShieldAlert, Truck, Users, Wrench } from "lucide-react";
 import type { PermissionModule } from "@/lib/permissions";
 
 export type NavigationItem = { module: PermissionModule; label: string; href: string; icon: typeof CircleGauge; children?: { label: string; href: string }[] };
@@ -19,9 +19,6 @@ export const dashboardNavigation: NavigationItem[] = [
   ]},
   { module: "MAINTENANCE", label: "Maintenance Management", href: "/dashboard/maintenance", icon: Wrench, children: [
     { label: "Service Schedule", href: "/dashboard/maintenance" }, { label: "Service History", href: "/dashboard/maintenance/history" }, { label: "Repair Management", href: "/dashboard/maintenance/repairs" },
-  ]},
-  { module: "TYRES", label: "Tyre & Wheel Management", href: "/dashboard/tyres", icon: LifeBuoy, children: [
-    { label: "Tyre Inventory", href: "/dashboard/tyres" }, { label: "Vehicle Tyres", href: "/dashboard/tyres/vehicles" }, { label: "Tyre Inspection", href: "/dashboard/tyres/inspection" }, { label: "Tyre History", href: "/dashboard/tyres/history" }, { label: "Wheel Alignment", href: "/dashboard/tyres/alignment" }, { label: "Wheel Balancing", href: "/dashboard/tyres/balancing" },
   ]},
   { module: "FUEL", label: "Fuel Management", href: "/dashboard/fuel", icon: Fuel, children: [
     { label: "Fuel Entry", href: "/dashboard/fuel/entry" }, { label: "Fuel History", href: "/dashboard/fuel" }, { label: "Fuel Analytics", href: "/dashboard/fuel/analytics" },

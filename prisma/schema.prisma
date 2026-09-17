@@ -106,7 +106,6 @@ model Vehicle {
   services              Service[]
   tripVehiclePhotos     TripVehiclePhoto[]
   trips                 Trip[]
-  tyres                 Tyre[]
   activities            VehicleActivity[]
   documents             VehicleDocument[]
   issues                VehicleIssue[]
@@ -456,30 +455,6 @@ model Service {
   @@map("services")
 }
 
-model Tyre {
-  id               String        @id @default(cuid())
-  vehicleId        String        @map("vehicle_id")
-  position         String
-  brand            String
-  installationDate DateTime      @map("installation_date")
-  condition        String
-  cost             Decimal?      @db.Decimal(12, 2)
-  createdAt        DateTime      @default(now()) @map("created_at")
-  currentKm        Int?          @map("current_km")
-  installationKm   Int?          @map("installation_km")
-  model            String?
-  pressure         Decimal?      @db.Decimal(6, 2)
-  replacementDate  DateTime?     @map("replacement_date")
-  replacementKm    Int?          @map("replacement_km")
-  serialNumber     String?       @map("serial_number")
-  size             String?
-  status           TyreStatus    @default(GOOD)
-  updatedAt        DateTime      @updatedAt @map("updated_at")
-  history          TyreHistory[]
-  vehicle          Vehicle       @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
-
-  @@map("tyres")
-}
 
 model FuelRecord {
   id            String            @id @default(cuid())
@@ -528,18 +503,6 @@ model VehicleIssue {
   @@map("vehicle_issues")
 }
 
-model TyreHistory {
-  id          String   @id @default(cuid())
-  tyreId      String   @map("tyre_id")
-  action      String
-  description String
-  metadata    Json?
-  createdAt   DateTime @default(now()) @map("created_at")
-  tyre        Tyre     @relation(fields: [tyreId], references: [id], onDelete: Cascade)
-
-  @@index([tyreId, createdAt])
-  @@map("tyre_history")
-}
 
 model Expense {
   id         String   @id @default(cuid())
@@ -670,7 +633,6 @@ enum VehicleActivityAction {
   VEHICLE_RETURNED
   INSPECTION_COMPLETED
   SERVICE_COMPLETED
-  TYRE_UPDATED
   ACCIDENT_REPORTED
   TRIP_STARTED
   TRIP_COMPLETED
@@ -681,8 +643,6 @@ enum VehicleActivityAction {
   ISSUE_RESOLVED
   DOCUMENT_REPLACED
   DOCUMENT_DELETED
-  TYRE_ADDED
-  TYRE_REPLACED
 }
 
 enum ServiceRecordStatus {
@@ -719,15 +679,6 @@ enum IssueStatus {
   IN_REPAIR
   RESOLVED
   CLOSED
-}
-
-enum TyreStatus {
-  GOOD
-  MONITOR
-  INSPECTION_REQUIRED
-  REPLACE_SOON
-  REPLACE_IMMEDIATELY
-  REPLACED
 }
 
 enum DriverStatus {
