@@ -1,0 +1,13 @@
+import Link from "next/link";
+import { Card } from "@/components/ui/card";
+import { authenticatedUser } from "@/lib/access-control";
+import { db } from "@/lib/db";
+
+export const dynamic = "force-dynamic";
+
+export default async function VehicleDocumentsPage() {
+  const user = await authenticatedUser({ module: "DOCUMENTS" });
+  const documents = await db.vehicleDocument.findMany({ where: { vehicle: { companyId: user.companyId! }, serviceId: null, fuelRecordId: null }, include: { vehicle: { select: { id: true, vehicleName: true, registrationNumber: true } } }, orderBy: { createdAt: "desc" } });
+  const status = (expiryDate: Date | null) => !expiryDate ? "—" : Math.ceil((expiryDate.getTime() - Date.now()) / 86_400_000) < 0 ? "EXPIRED" : Math.ceil((expiryDate.getTime() - Date.now()) / 86_400_000) <= 30 ? "EXPIRING SOON" : "VALID";
+  return <div className="mx-auto max-w-[1400px]"><p className="text-xs font-medium text-slate-500">Document & Compliance</p><h1 className="mt-1 text-2xl font-bold">Vehicle documents</h1><p className="mt-1 text-sm text-slate-500">Documents uploaded from Vehicle Management, linked by vehicle record ID.</p><Card className="mt-6 overflow-x-auto"><table className="w-full text-left"><thead className="bg-slate-50"><tr>{["Vehicle", "Document type", "File", "Uploaded", "Expiry", "Status", "Actions"].map(label => <th key={label} className="px-4 py-3 text-xs font-semibold text-slate-600">{label}</th>)}</tr></thead><tbody>{documents.map(document => <tr key={document.id} className="border-t text-xs"><td className="px-4 py-4"><Link href={`/vehicles/${document.vehicle.id}?tab=Documents`} className="font-semibold text-blue-600">{document.vehicle.vehicleName}</Link><p className="mt-1 text-slate-500">{document.vehicle.registrationNumber}</p></td><td className="px-4 py-4">{document.documentType.replaceAll("_", " ")}</td><td className="px-4 py-4">{document.fileName}</td><td className="px-4 py-4">{document.createdAt.toLocaleString("en-GB")}</td><td className="px-4 py-4">{document.expiryDate?.toLocaleDateString("en-GB") ?? "—"}</td><td className="px-4 py-4">{status(document.expiryDate)}</td><td className="px-4 py-4"><a className="font-semibold text-blue-600" href={`/api/vehicles/${document.vehicleId}/documents/${document.id}`} target="_blank" rel="noreferrer">View</a><a className="ml-3 font-semibold text-blue-600" href={`/api/vehicles/${document.vehicleId}/documents/${document.id}?download=1`}>Download</a></td></tr>)}</tbody></table>{!documents.length && <p className="p-10 text-center text-sm text-slate-500">No vehicle documents found.</p>}</Card></div>;
+}
