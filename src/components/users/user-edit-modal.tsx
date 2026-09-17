@@ -34,7 +34,8 @@ export function UserEditModal({
     setError("");
     const form = new FormData(event.currentTarget);
     const password = String(form.get("password") ?? "");
-    const body: { email: string; role?: string; password?: string } = {
+    const body: { name: string; email: string; role?: string; password?: string } = {
+      name: String(form.get("name") ?? ""),
       email: String(form.get("email") ?? ""),
     };
     if (user.id !== currentUserId) body.role = String(form.get("role") ?? "");
@@ -67,7 +68,7 @@ export function UserEditModal({
           <button type="button" disabled={saving} onClick={onClose} aria-label="Close edit user"><X size={19}/></button>
         </div>
         <form onSubmit={submit} className="mt-5 space-y-4">
-          <label className="block text-xs font-semibold text-slate-700">Full Name<input value={user.name} readOnly className={`${field} bg-slate-50 text-slate-500`}/></label>
+          <label className="block text-xs font-semibold text-slate-700">Full Name<input name="name" required defaultValue={user.name} className={field}/></label>
           <label className="block text-xs font-semibold text-slate-700">Email<input name="email" type="email" required defaultValue={user.email} className={field}/></label>
           <label className="block text-xs font-semibold text-slate-700">New Password<input name="password" type="password" minLength={10} autoComplete="new-password" placeholder="Leave blank to keep current password" className={field}/></label>
           <label className="block text-xs font-semibold text-slate-700">Role<select name="role" required defaultValue={user.role} disabled={user.id === currentUserId} className={field}>{userRoles.map((role) => <option key={role} value={role}>{roleLabel(role)}</option>)}</select></label>
