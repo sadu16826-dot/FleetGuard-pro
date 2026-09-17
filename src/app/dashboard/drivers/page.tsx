@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Plus } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Table, TableCell, TableHead } from "@/components/ui/table";
+import { DriverRowActions } from "@/components/drivers/driver-row-actions";
 import { authenticatedUser } from "@/lib/access-control";
 import { db } from "@/lib/db";
 import { documentExpiryStatus, driverStatusClassName, driverStatusLabels, formatShortDate } from "@/lib/driver-utils";
@@ -18,6 +19,7 @@ export default async function DriverManagementPage() {
     },
     orderBy: { name: "asc" },
   });
+  const canManageDrivers = user.role === "ADMIN";
 
   return (
     <div className="mx-auto max-w-[1500px]">
@@ -26,10 +28,10 @@ export default async function DriverManagementPage() {
           <h1 className="text-2xl font-bold tracking-tight">Driver management</h1>
           <p className="mt-1 text-sm text-slate-500">Track driver profiles, licence status and active assignments.</p>
         </div>
-        <Link href="/dashboard/drivers/new" className="inline-flex h-10 items-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white hover:bg-blue-700">
+        {canManageDrivers && <Link href="/dashboard/drivers/new" className="inline-flex h-10 items-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white hover:bg-blue-700">
           <Plus size={16} />
           Add driver
-        </Link>
+        </Link>}
       </div>
 
       <Card className="overflow-hidden">
@@ -44,6 +46,7 @@ export default async function DriverManagementPage() {
                 <TableHead>Assigned vehicle</TableHead>
                 <TableHead>Last trip</TableHead>
                 <TableHead>Expiry</TableHead>
+                {canManageDrivers && <TableHead>Actions</TableHead>}
               </tr>
             </thead>
             <tbody>
@@ -81,6 +84,7 @@ export default async function DriverManagementPage() {
                         {expiryStatus}
                       </span>
                     </TableCell>
+                    {canManageDrivers && <TableCell><DriverRowActions driver={driver} /></TableCell>}
                   </tr>
                 );
               })}

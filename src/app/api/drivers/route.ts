@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { authenticatedUser, accessFailure } from "@/lib/access-control";
+import { AccessError, authenticatedUser, accessFailure } from "@/lib/access-control";
 import { db } from "@/lib/db";
 import type { DriverStatus } from "@/generated/prisma";
 
@@ -10,6 +10,13 @@ const driverStatuses = new Set([
   "SUSPENDED",
   "TERMINATED",
 ]);
+
+async function driverManager() {
+  const user = await authenticatedUser({ module: "DRIVERS", action: "MANAGE" });
+  if (user.role !== "ADMIN")
+    throw new AccessError("Only Super Admins can manage drivers.", 403);
+  return user;
+}
 
 export async function GET() {
   try {
@@ -29,7 +36,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const user = await authenticatedUser({ module: "DRIVERS", action: "CREATE" });
+    const user = await driverManager();
     const input = (await request.json()) as {
       name?: string;
       phone?: string;
